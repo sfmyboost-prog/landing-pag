@@ -44,6 +44,14 @@ export interface CourierSettings {
   };
 }
 
+export interface PixelSettings {
+  pixelId: string;
+  appId: string;
+  accessToken: string;
+  testEventCode: string;
+  status: 'Inactive' | 'Connecting' | 'Active';
+}
+
 export interface Order {
   id: string;
   customerName: string;
