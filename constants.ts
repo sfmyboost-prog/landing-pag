@@ -1,0 +1,87 @@
+
+import { Product } from './types';
+
+export const INITIAL_PRODUCTS: Product[] = [
+  {
+    id: '1',
+    name: "Allen Solly Men's Polo T-Shirt",
+    price: 49.00,
+    originalPrice: 98.00,
+    rating: 4.8,
+    reviewCount: 24,
+    description: "Virgil Abloh's Off-White is a streetwear-inspired collection that continues to break away from the conventions of mainstream fashion. Made in Italy, these premium polo shirts offer unmatched comfort and style.",
+    images: [
+      "https://picsum.photos/id/10/800/1000",
+      "https://picsum.photos/id/11/800/1000",
+      "https://picsum.photos/id/12/800/1000",
+      "https://picsum.photos/id/13/800/1000"
+    ],
+    colors: ['#2563eb', '#dc2626', '#15803d', '#facc15'],
+    sizes: ['S', 'M', 'L', 'XL'],
+    productId: '#BHU5879',
+    deliveryRegions: ['Russia', 'USA', 'Europe'],
+    category: 'Apparel',
+    isMain: true,
+    isActive: true,
+    stock: 124,
+    discountPercentage: 50,
+    purchaseCost: 20.00
+  },
+  {
+    id: '2',
+    name: "Classic Leather Sneakers",
+    price: 89.00,
+    originalPrice: 120.00,
+    rating: 4.5,
+    reviewCount: 112,
+    description: "Handcrafted Italian leather sneakers with minimalist aesthetic and ergonomic sole for all-day comfort.",
+    images: ["https://picsum.photos/id/21/800/1000"],
+    colors: ['#000000', '#ffffff'],
+    sizes: ['8', '9', '10', '11'],
+    productId: '#SNK2210',
+    deliveryRegions: ['Worldwide'],
+    category: 'Footwear',
+    isActive: true,
+    stock: 45,
+    discountPercentage: 25,
+    purchaseCost: 45.00
+  },
+  {
+    id: '3',
+    name: "Minimalist Chronograph Watch",
+    price: 159.00,
+    originalPrice: 199.00,
+    rating: 4.9,
+    reviewCount: 45,
+    description: "Sleek stainless steel watch featuring a sapphire crystal face and premium leather strap.",
+    images: ["https://picsum.photos/id/31/800/1000"],
+    colors: ['#111827', '#4b5563'],
+    sizes: ['OS'],
+    productId: '#WTC993',
+    deliveryRegions: ['Worldwide'],
+    category: 'Accessories',
+    isActive: true,
+    stock: 12,
+    discountPercentage: 20,
+    purchaseCost: 80.00
+  },
+  {
+    id: '4',
+    name: "Urban Explorer Backpack",
+    price: 75.00,
+    originalPrice: 95.00,
+    rating: 4.7,
+    reviewCount: 88,
+    description: "Weather-resistant nylon backpack with padded laptop compartment and multiple utility pockets.",
+    images: ["https://picsum.photos/id/48/800/1000"],
+    colors: ['#1e293b', '#064e3b'],
+    sizes: ['OS'],
+    productId: '#BPK445',
+    deliveryRegions: ['USA', 'Europe'],
+    category: 'Bags',
+    isActive: true,
+    stock: 32,
+    discountPercentage: 21,
+    purchaseCost: 35.00
+  }
+];
