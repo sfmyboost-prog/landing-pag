@@ -17,9 +17,9 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, setView, cartCount }) => {
           onClick={() => setView('LANDING')}
         >
           <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold group-hover:scale-110 transition-transform">
-            E
+            A
           </div>
-          <span className="text-xl font-bold tracking-tight text-gray-900">EliteCommerce</span>
+          <span className="text-xl font-bold tracking-tight text-gray-900">Amar Bazari</span>
         </div>
 
         <div className="hidden md:flex items-center gap-8 text-sm font-medium">
@@ -33,7 +33,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentView, setView, cartCount }) => {
             onClick={() => setView('USER')}
             className={`${currentView === 'USER' ? 'text-indigo-600' : 'text-gray-500'} hover:text-indigo-600 transition-colors`}
           >
-            My Panel
+            Dibba
           </button>
           <button 
             onClick={() => setView('ADMIN')}

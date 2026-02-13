@@ -1,3 +1,4 @@
+
 import { Order, CourierSettings } from './types';
 
 /**
@@ -15,9 +16,11 @@ export const CourierService = {
    * Send Order to SteadFast Courier
    */
   async sendToSteadfast(order: Order, settings: CourierSettings['steadfast']) {
+    const fullAddress = `${order.customerAddress}, ${order.customerLocation}, Zip: ${order.customerZipCode}`;
+
     // SIMULATION MODE: If credentials are missing, perform a mock dispatch for demo purposes
     if (!settings.apiKey || !settings.secretKey) {
-        console.log("Simulating SteadFast Dispatch for order:", order.id);
+        console.log("Simulating SteadFast Dispatch for order:", order.id, "Address:", fullAddress);
         await new Promise(resolve => setTimeout(resolve, 1500)); // Fake network delay
         return {
             consignment_id: `STF-${Math.floor(Math.random() * 100000)}`,
@@ -30,7 +33,7 @@ export const CourierService = {
       invoice: order.id,
       recipient_name: order.customerName,
       recipient_phone: order.customerPhone,
-      recipient_address: order.customerAddress,
+      recipient_address: fullAddress,
       cod_amount: order.totalPrice,
       note: 'Order from EliteCommerce'
     };
@@ -61,14 +64,13 @@ export const CourierService = {
 
   /**
    * Send Order to Pathao Courier
-   * This involves two steps:
-   * 1. Get Access Token
-   * 2. Create Order
    */
   async sendToPathao(order: Order, settings: CourierSettings['pathao']) {
+    const fullAddress = `${order.customerAddress}, ${order.customerLocation}, Zip: ${order.customerZipCode}`;
+
     // SIMULATION MODE: If credentials are missing, perform a mock dispatch for demo purposes
     if (!settings.clientId || !settings.clientSecret) {
-        console.log("Simulating Pathao Dispatch for order:", order.id);
+        console.log("Simulating Pathao Dispatch for order:", order.id, "Address:", fullAddress);
         await new Promise(resolve => setTimeout(resolve, 1500)); // Fake network delay
         return {
             consignment_id: `PTH-${Math.floor(Math.random() * 100000)}`,
@@ -107,7 +109,7 @@ export const CourierService = {
         merchant_order_id: order.id,
         recipient_name: order.customerName,
         recipient_phone: order.customerPhone,
-        recipient_address: order.customerAddress,
+        recipient_address: fullAddress,
         recipient_city: 1, // Defaulting to Dhaka (1) or City ID needs to be mapped in real app
         recipient_zone: 1, // Defaulting to Zone ID or needs mapping
         amount_to_collect: order.totalPrice,

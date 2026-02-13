@@ -19,8 +19,8 @@ const App: React.FC = () => {
   const [isCelebrating, setIsCelebrating] = useState(false);
   
   const [storeSettings, setStoreSettings] = useState<StoreSettings>({
-    storeName: 'Dataflow Ecommerce',
-    logoUrl: 'D',
+    storeName: 'Amar Bazari',
+    logoUrl: 'A',
     currency: 'USD',
     taxPercentage: 10,
     shippingFee: 0
@@ -68,8 +68,7 @@ const App: React.FC = () => {
   const mainProduct = products.find(p => p.isMain) || products[0];
 
   const handleProductClick = useCallback((product: Product) => {
-    setSelectedProduct(product);
-    setView('DETAIL');
+    handleOrderNow(product);
   }, []);
 
   const handleOrderNow = (item: CartItem | Product) => {
@@ -77,18 +76,14 @@ const App: React.FC = () => {
       const directItem: CartItem = {
         product: item,
         quantity: 1,
-        selectedSize: item.sizes[0],
-        selectedColor: item.colors[0]
+        selectedSize: item.sizes[0] || 'M',
+        selectedColor: item.colors[0] || '#000'
       };
       setCart([directItem]);
     } else {
       setCart([item]);
     }
     setView('USER');
-  };
-
-  const addToCart = (item: CartItem) => {
-    setCart(prev => [...prev, item]);
   };
 
   const updateCartItem = (index: number, updates: Partial<CartItem>) => {
@@ -105,7 +100,7 @@ const App: React.FC = () => {
 
   const clearCart = () => setCart([]);
 
-  const placeOrder = async (details: { name: string; email: string; phone: string; address: string; location: string; courier: 'Pathao' | 'SteadFast' | '' }) => {
+  const placeOrder = async (details: { name: string; email: string; phone: string; address: string; location: string; zipCode: string; courier: 'Pathao' | 'SteadFast' | '' }) => {
     if (cart.length === 0) return;
     const totalPrice = cart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
     const newOrder: Order = {
@@ -115,6 +110,7 @@ const App: React.FC = () => {
       customerPhone: details.phone,
       customerAddress: details.address,
       customerLocation: details.location,
+      customerZipCode: details.zipCode,
       customerCourierPreference: details.courier as 'Pathao' | 'SteadFast',
       items: [...cart],
       totalPrice,
@@ -167,7 +163,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8F9FB] relative overflow-x-hidden">
-      {/* Edge Lighting Animation */}
       {isCelebrating && (
         <div className="fixed inset-0 pointer-events-none z-[300] flex justify-between animate-glowPulse">
           <div className="w-2 h-full bg-gradient-to-b from-indigo-500 via-purple-500 to-indigo-500 blur-md shadow-[0_0_20px_rgba(99,102,241,0.8)]"></div>
@@ -229,8 +224,9 @@ const App: React.FC = () => {
           <UserPanel 
             cart={cart} 
             users={users}
+            orders={orders}
             wishlist={wishlist}
-            onViewProduct={handleProductClick}
+            onViewProduct={setSelectedProduct}
             onPlaceOrder={placeOrder}
             onUpdateCartItem={updateCartItem}
             onRemoveFromCart={removeFromCart}
@@ -243,7 +239,7 @@ const App: React.FC = () => {
         <footer className="bg-gray-900 text-white py-12 px-6 mt-12">
           <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
-              <h3 className="text-xl font-bold mb-4">EliteCommerce</h3>
+              <h3 className="text-xl font-bold mb-4">Amar Bazari</h3>
               <p className="text-gray-400 text-sm">Curated premium selections for the modern elite.</p>
             </div>
           </div>

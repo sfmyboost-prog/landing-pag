@@ -69,6 +69,7 @@ export interface Order {
   customerPhone: string;
   customerAddress: string;
   customerLocation: string;
+  customerZipCode: string;
   customerCourierPreference?: 'Pathao' | 'SteadFast';
   items: CartItem[];
   totalPrice: number;

@@ -48,8 +48,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   // Modals
   const [showProductModal, setShowProductModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showOrderDetailsModal, setShowOrderDetailsModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   
   // Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{
@@ -291,6 +293,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setShowCategoryModal(true);
   };
 
+  const handleOpenOrderDetails = (order: Order) => {
+    setSelectedOrder(order);
+    setShowOrderDetailsModal(true);
+  };
+
   return (
     <div className={`flex min-h-screen transition-colors duration-500 ${isDarkMode ? 'bg-[#111315] text-[#F3F5F7]' : 'bg-[#F3F5F7] text-[#111315]'}`}>
       
@@ -483,7 +490,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                        <div className="flex items-center gap-3 bg-gray-50 dark:bg-[#272B30] rounded-2xl px-4 py-3 shadow-inner border border-gray-100 dark:border-gray-800 transition-all duration-300">
                           <button 
                             onClick={() => setDayOffset(prev => prev - 1)}
-                            className="w-8 h-8 flex items-center justify-center bg-white dark:bg-[#1A1D1F] rounded-xl shadow-sm text-gray-400 hover:text-[#FF7E3E] transition-all transform active:scale-90"
+                            className="w-8 h-8 flex items-center justify-center bg-white dark:bg-[#1A1D1F] rounded-xl shadow-sm text-gray-400 hover:text-[#FF7E3E] transition-all transform active:scale-95"
                             title="Decrease Date"
                           >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
@@ -505,7 +512,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
                           <button 
                             onClick={() => setDayOffset(prev => prev + 1)}
-                            className="w-8 h-8 flex items-center justify-center bg-white dark:bg-[#1A1D1F] rounded-xl shadow-sm text-gray-400 hover:text-[#FF7E3E] transition-all transform active:scale-90"
+                            className="w-8 h-8 flex items-center justify-center bg-white dark:bg-[#1A1D1F] rounded-xl shadow-sm text-gray-400 hover:text-[#FF7E3E] transition-all transform active:scale-95"
                             title="Increase Date"
                           >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>
@@ -618,7 +625,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                           </thead>
                           <tbody key={updateKey} className="divide-y dark:divide-[#272B30]">
                              {dashboardStats.recentOrdersList.map((order, idx) => (
-                               <tr key={order.id} className="group hover:bg-gray-50 dark:hover:bg-[#272B30]/30 transition-colors cursor-pointer animate-rowIn" style={{ animationDelay: `${idx * 50}ms` }}>
+                               <tr key={order.id} className="group hover:bg-gray-50 dark:hover:bg-[#272B30]/30 transition-colors cursor-pointer animate-rowIn" style={{ animationDelay: `${idx * 50}ms` }} onClick={() => handleOpenOrderDetails(order)}>
                                   <td className="py-6 flex items-center gap-4">
                                      <div className="w-12 h-12 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-100">
                                         <img src={order.items[0]?.product.images[0]} className="w-full h-full object-cover" />
@@ -805,7 +812,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                      </thead>
                      <tbody className="divide-y dark:divide-[#272B30]">
                         {orders.map((o, idx) => (
-                           <tr key={o.id} className="group hover:bg-gray-50 dark:hover:bg-gray-800/10 transition-colors animate-rowIn" style={{ animationDelay: `${idx * 40}ms` }}>
+                           <tr key={o.id} className="group hover:bg-gray-50 dark:hover:bg-gray-800/10 transition-colors animate-rowIn cursor-pointer" style={{ animationDelay: `${idx * 40}ms` }} onClick={() => handleOpenOrderDetails(o)}>
                               <td className="py-6 text-sm font-black text-orange-500">#{o.id}</td>
                               <td className="py-6">
                                  <div className="flex flex-col">
@@ -814,7 +821,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                  </div>
                               </td>
                               <td className="py-6 text-sm font-black">${o.totalPrice.toLocaleString()}</td>
-                              <td className="py-6">
+                              <td className="py-6" onClick={(e) => e.stopPropagation()}>
                                  <select 
                                     value={o.paymentStatus} 
                                     onChange={(e) => onUpdateOrder({...o, paymentStatus: e.target.value as any})}
@@ -829,7 +836,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                     <option value="Cancel">Cancel</option>
                                  </select>
                               </td>
-                              <td className="py-6">
+                              <td className="py-6" onClick={(e) => e.stopPropagation()}>
                                  <select 
                                     value={o.orderStatus} 
                                     onChange={(e) => onUpdateOrder({...o, orderStatus: e.target.value as any})}
@@ -1191,6 +1198,126 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               >
                 {confirmModal.actionLabel}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Order Details Modal (Extensive Information View) */}
+      {showOrderDetailsModal && selectedOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-fadeIn">
+          <div className={`w-full max-w-4xl max-h-[90vh] rounded-[40px] shadow-2xl overflow-hidden flex flex-col ${isDarkMode ? 'bg-[#1A1D1F] border-[#272B30]' : 'bg-white border-[#EFEFEF]'} border animate-scaleIn`}>
+            <div className="p-8 border-b dark:border-[#272B30] flex justify-between items-center">
+               <div>
+                  <h3 className="text-2xl font-black">Order Inspection: #{selectedOrder.id}</h3>
+                  <p className="text-xs font-bold text-[#6F767E] mt-1 uppercase tracking-widest">Review complete customer & logistics metadata</p>
+               </div>
+               <button onClick={() => setShowOrderDetailsModal(false)} className="w-10 h-10 rounded-full hover:bg-gray-100 dark:hover:bg-[#272B30] flex items-center justify-center transition-all"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12"/></svg></button>
+            </div>
+            <div className="flex-grow overflow-y-auto p-10 space-y-10 no-scrollbar">
+               {/* Metadata Grid */}
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  {/* Customer Card */}
+                  <div className={`p-6 rounded-3xl border ${isDarkMode ? 'bg-[#111315] border-[#272B30]' : 'bg-gray-50 border-gray-100'} space-y-4`}>
+                     <h4 className="text-[10px] font-black uppercase text-indigo-500 tracking-[0.2em]">Customer Profile</h4>
+                     <div className="space-y-3">
+                        <div>
+                           <p className="text-[9px] font-bold text-gray-400 uppercase">Legal Name</p>
+                           <p className="text-sm font-black">{selectedOrder.customerName}</p>
+                        </div>
+                        <div>
+                           <p className="text-[9px] font-bold text-gray-400 uppercase">Email Address</p>
+                           <p className="text-xs font-bold text-gray-500">{selectedOrder.customerEmail}</p>
+                        </div>
+                        <div>
+                           <p className="text-[9px] font-bold text-gray-400 uppercase">Phone Number</p>
+                           <p className="text-xs font-bold text-gray-900">{selectedOrder.customerPhone}</p>
+                        </div>
+                     </div>
+                  </div>
+
+                  {/* Shipping Card */}
+                  <div className={`p-6 rounded-3xl border ${isDarkMode ? 'bg-[#111315] border-[#272B30]' : 'bg-gray-50 border-gray-100'} space-y-4`}>
+                     <h4 className="text-[10px] font-black uppercase text-orange-500 tracking-[0.2em]">Shipping Details</h4>
+                     <div className="space-y-3">
+                        <div>
+                           <p className="text-[9px] font-bold text-gray-400 uppercase">General Location</p>
+                           <p className="text-xs font-black text-blue-500">{selectedOrder.customerLocation}</p>
+                        </div>
+                        <div>
+                           <p className="text-[9px] font-bold text-gray-400 uppercase">Street Address</p>
+                           <p className="text-xs font-bold leading-relaxed">{selectedOrder.customerAddress}</p>
+                        </div>
+                        <div>
+                           <p className="text-[9px] font-bold text-gray-400 uppercase">Preference</p>
+                           <p className="text-xs font-black uppercase">{selectedOrder.customerCourierPreference || 'Standard'}</p>
+                        </div>
+                     </div>
+                  </div>
+
+                  {/* Log Card */}
+                  <div className={`p-6 rounded-3xl border ${isDarkMode ? 'bg-[#111315] border-[#272B30]' : 'bg-gray-50 border-gray-100'} space-y-4`}>
+                     <h4 className="text-[10px] font-black uppercase text-green-500 tracking-[0.2em]">Logistics Log</h4>
+                     <div className="space-y-3">
+                        <div>
+                           <p className="text-[9px] font-bold text-gray-400 uppercase">Timestamp</p>
+                           <p className="text-xs font-bold">{new Date(selectedOrder.timestamp).toLocaleString()}</p>
+                        </div>
+                        <div>
+                           <p className="text-[9px] font-bold text-gray-400 uppercase">Fulfillment State</p>
+                           <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                             selectedOrder.orderStatus === 'Delivered' ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'
+                           }`}>{selectedOrder.orderStatus}</span>
+                        </div>
+                        <div>
+                           <p className="text-[9px] font-bold text-gray-400 uppercase">Payment State</p>
+                           <span className="text-xs font-black text-indigo-600 uppercase">{selectedOrder.paymentStatus}</span>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+
+               {/* Items List */}
+               <div className="space-y-6">
+                  <h4 className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Ordered Items ({selectedOrder.items.length})</h4>
+                  <div className="grid grid-cols-1 gap-4">
+                     {selectedOrder.items.map((item, idx) => (
+                        <div key={idx} className={`p-6 rounded-3xl border flex flex-col md:flex-row items-center gap-6 ${isDarkMode ? 'bg-[#1A1D1F] border-[#272B30]' : 'bg-white border-gray-100'}`}>
+                           <div className="w-16 h-20 rounded-xl overflow-hidden bg-gray-50 shadow-sm ring-1 ring-gray-100">
+                              <img src={item.product.images[0]} className="w-full h-full object-cover" />
+                           </div>
+                           <div className="flex-grow">
+                              <h5 className="text-sm font-black">{item.product.name}</h5>
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tighter mt-1">SKU: {item.product.productId}</p>
+                              <div className="flex gap-4 mt-2">
+                                 {item.product.hasSizes && <span className="text-[9px] font-black text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded">Size: {item.selectedSize}</span>}
+                                 {item.product.hasColors && (
+                                    <div className="flex items-center gap-1">
+                                       <span className="text-[9px] font-black text-gray-400">Color:</span>
+                                       <div className="w-2.5 h-2.5 rounded-full ring-1 ring-gray-200" style={{backgroundColor: item.selectedColor}} />
+                                    </div>
+                                 )}
+                              </div>
+                           </div>
+                           <div className="text-right">
+                              <p className="text-sm font-black">${item.product.price.toLocaleString()}</p>
+                              <p className="text-[10px] font-bold text-gray-400">Qty: x{item.quantity}</p>
+                              <p className="text-xs font-black text-[#FF7E3E] mt-1">${(item.product.price * item.quantity).toLocaleString()}</p>
+                           </div>
+                        </div>
+                     ))}
+                  </div>
+               </div>
+            </div>
+            <div className="p-8 border-t dark:border-[#272B30] flex justify-between items-center bg-gray-50 dark:bg-[#111315]">
+               <div className="text-left">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Valuation</p>
+                  <p className="text-3xl font-black text-[#FF7E3E] tracking-tighter">${selectedOrder.totalPrice.toLocaleString()}</p>
+               </div>
+               <div className="flex gap-3">
+                  <button onClick={() => window.print()} className="px-6 py-3 rounded-2xl border border-gray-200 text-xs font-black uppercase tracking-widest hover:bg-gray-100 transition-all">Download Invoice</button>
+                  <button onClick={() => setShowOrderDetailsModal(false)} className="px-8 py-3 rounded-2xl bg-[#FF7E3E] text-white text-xs font-black uppercase tracking-widest shadow-xl shadow-orange-100 hover:scale-105 active:scale-95 transition-all">Close Inspection</button>
+               </div>
             </div>
           </div>
         </div>
