@@ -25,7 +25,10 @@ export const INITIAL_PRODUCTS: Product[] = [
     isActive: true,
     stock: 124,
     discountPercentage: 50,
-    purchaseCost: 20.00
+    purchaseCost: 20.00,
+    internalPrice: 35.00,
+    hasSizes: true,
+    hasColors: true
   },
   {
     id: '2',
@@ -44,7 +47,10 @@ export const INITIAL_PRODUCTS: Product[] = [
     isActive: true,
     stock: 45,
     discountPercentage: 25,
-    purchaseCost: 45.00
+    purchaseCost: 45.00,
+    internalPrice: 65.00,
+    hasSizes: true,
+    hasColors: true
   },
   {
     id: '3',
@@ -63,7 +69,10 @@ export const INITIAL_PRODUCTS: Product[] = [
     isActive: true,
     stock: 12,
     discountPercentage: 20,
-    purchaseCost: 80.00
+    purchaseCost: 80.00,
+    internalPrice: 120.00,
+    hasSizes: false,
+    hasColors: true
   },
   {
     id: '4',
@@ -82,6 +91,9 @@ export const INITIAL_PRODUCTS: Product[] = [
     isActive: true,
     stock: 32,
     discountPercentage: 21,
-    purchaseCost: 35.00
+    purchaseCost: 35.00,
+    internalPrice: 55.00,
+    hasSizes: false,
+    hasColors: false
   }
 ];

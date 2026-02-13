@@ -1,7 +1,7 @@
 
-import React, { useState, useCallback } from 'react';
-import { ViewState, Product, CartItem, Order, User, StoreSettings, CourierSettings } from './types';
-import { INITIAL_PRODUCTS } from './constants';
+import React, { useState, useCallback, useEffect } from 'react';
+import { ViewState, Product, CartItem, Order, User, StoreSettings, CourierSettings, Category, PixelSettings } from './types';
+import { api } from './BackendAPI';
 import Navbar from './components/Navbar';
 import ProductLanding from './components/ProductLanding';
 import ProductDetailView from './components/ProductDetailView';
@@ -12,13 +12,12 @@ import UserPanel from './components/UserPanel';
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('LANDING');
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
-  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
-  const [categories, setCategories] = useState<string[]>(['Apparel', 'Footwear', 'Accessories', 'Bags']);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [users, setUsers] = useState<User[]>([
-    { id: '1', name: 'Kristin Watson', email: 'kristin@dataflow.com', role: 'Admin', status: 'Active', createdAt: new Date() },
-    { id: '2', name: 'Leslie Alexander', email: 'leslie@example.com', role: 'Customer', status: 'Active', createdAt: new Date() }
-  ]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isCelebrating, setIsCelebrating] = useState(false);
+  
   const [storeSettings, setStoreSettings] = useState<StoreSettings>({
     storeName: 'Dataflow Ecommerce',
     logoUrl: 'D',
@@ -31,10 +30,40 @@ const App: React.FC = () => {
     pathao: { clientId: '', clientSecret: '', storeId: '', username: '', password: '' },
     steadfast: { apiKey: '', secretKey: '', merchantId: '' }
   });
+
+  const [pixelSettings, setPixelSettings] = useState<PixelSettings>({
+    pixelId: '',
+    appId: '',
+    accessToken: '',
+    testEventCode: '',
+    status: 'Inactive'
+  });
   
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [wishlist, setWishlist] = useState<Product[]>([]);
+
+  // Initial Data Fetch
+  useEffect(() => {
+    const fetchData = async () => {
+      const [p, c, o, u] = await Promise.all([
+        api.getProducts(),
+        Promise.resolve([
+          { id: '1', name: 'Apparel', isActive: true },
+          { id: '2', name: 'Footwear', isActive: true },
+          { id: '3', name: 'Accessories', isActive: true },
+          { id: '4', name: 'Bags', isActive: true }
+        ]), // Logic for categories
+        api.getOrders(),
+        api.getUsers()
+      ]);
+      setProducts(p);
+      setCategories(c);
+      setOrders(o);
+      setUsers(u);
+    };
+    fetchData();
+  }, [view]);
 
   const mainProduct = products.find(p => p.isMain) || products[0];
 
@@ -43,13 +72,40 @@ const App: React.FC = () => {
     setView('DETAIL');
   }, []);
 
+  const handleOrderNow = (item: CartItem | Product) => {
+    if ('id' in item) {
+      const directItem: CartItem = {
+        product: item,
+        quantity: 1,
+        selectedSize: item.sizes[0],
+        selectedColor: item.colors[0]
+      };
+      setCart([directItem]);
+    } else {
+      setCart([item]);
+    }
+    setView('USER');
+  };
+
   const addToCart = (item: CartItem) => {
     setCart(prev => [...prev, item]);
   };
 
+  const updateCartItem = (index: number, updates: Partial<CartItem>) => {
+    setCart(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], ...updates };
+      return next;
+    });
+  };
+
+  const removeFromCart = (index: number) => {
+    setCart(prev => prev.filter((_, i) => i !== index));
+  };
+
   const clearCart = () => setCart([]);
 
-  const placeOrder = (details: { name: string; email: string; phone: string; address: string; location: string }) => {
+  const placeOrder = async (details: { name: string; email: string; phone: string; address: string; location: string; courier: 'Pathao' | 'SteadFast' | '' }) => {
     if (cart.length === 0) return;
     const totalPrice = cart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
     const newOrder: Order = {
@@ -59,38 +115,48 @@ const App: React.FC = () => {
       customerPhone: details.phone,
       customerAddress: details.address,
       customerLocation: details.location,
+      customerCourierPreference: details.courier as 'Pathao' | 'SteadFast',
       items: [...cart],
       totalPrice,
-      status: 'Paid',
+      paymentStatus: 'Paid',
       orderStatus: 'Pending',
       timestamp: new Date()
     };
+    await api.createOrder(newOrder);
     setOrders(prev => [newOrder, ...prev]);
     clearCart();
-    alert('Order placed successfully!');
   };
 
-  const updateProduct = (updatedProduct: Product) => {
+  const handleCloseSuccess = () => {
+    setView('LANDING');
+    setIsCelebrating(true);
+    setTimeout(() => {
+      setIsCelebrating(false);
+    }, 2000);
+  };
+
+  const updateProduct = async (updatedProduct: Product) => {
+    await api.saveProduct(updatedProduct);
     setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
   };
 
-  const addProduct = (newProduct: Product) => {
+  const addProduct = async (newProduct: Product) => {
+    await api.saveProduct(newProduct);
     setProducts(prev => [newProduct, ...prev]);
   };
 
-  const deleteProduct = (id: string) => {
+  const deleteProduct = async (id: string) => {
+    await api.deleteProduct(id);
     setProducts(prev => prev.filter(p => p.id !== id));
   };
 
-  const updateOrder = (updatedOrder: Order) => {
+  const updateOrder = async (updatedOrder: Order) => {
+    await api.updateOrder(updatedOrder);
     setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
   };
 
-  const addOrder = (newOrder: Order) => {
-    setOrders(prev => [newOrder, ...prev]);
-  };
-
-  const updateUser = (updatedUser: User) => {
+  const updateUser = async (updatedUser: User) => {
+    await api.updateUser(updatedUser);
     setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
   };
 
@@ -100,15 +166,24 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F8F9FB]">
+    <div className="min-h-screen flex flex-col bg-[#F8F9FB] relative overflow-x-hidden">
+      {/* Edge Lighting Animation */}
+      {isCelebrating && (
+        <div className="fixed inset-0 pointer-events-none z-[300] flex justify-between animate-glowPulse">
+          <div className="w-2 h-full bg-gradient-to-b from-indigo-500 via-purple-500 to-indigo-500 blur-md shadow-[0_0_20px_rgba(99,102,241,0.8)]"></div>
+          <div className="w-2 h-full bg-gradient-to-b from-indigo-500 via-purple-500 to-indigo-500 blur-md shadow-[0_0_20px_rgba(99,102,241,0.8)]"></div>
+        </div>
+      )}
+
       {view !== 'ADMIN' && <Navbar currentView={view} setView={setView} cartCount={cart.length} />}
       
       <main className={`flex-grow ${view !== 'ADMIN' ? 'pt-16' : ''}`}>
-        {view === 'LANDING' && (
+        {view === 'LANDING' && products.length > 0 && (
           <ProductLanding 
             mainProduct={mainProduct} 
             otherProducts={products.filter(p => p.id !== mainProduct.id)}
             onProductClick={handleProductClick}
+            onOrderNow={handleOrderNow}
           />
         )}
         
@@ -116,7 +191,7 @@ const App: React.FC = () => {
           <ProductDetailView 
             product={selectedProduct} 
             onBack={() => setView('LANDING')}
-            onAddToCart={addToCart}
+            onOrderNow={handleOrderNow}
             onToggleWishlist={(p) => setWishlist(prev => prev.some(x => x.id === p.id) ? prev.filter(x => x.id !== p.id) : [...prev, p])}
             isWishlisted={wishlist.some(p => p.id === selectedProduct.id)}
           />
@@ -132,15 +207,19 @@ const App: React.FC = () => {
               orders={orders}
               users={users}
               storeSettings={storeSettings}
+              courierSettings={courierSettings}
+              pixelSettings={pixelSettings}
               onUpdate={updateProduct} 
               onAdd={addProduct} 
               onDelete={deleteProduct}
               onUpdateOrder={updateOrder}
-              onAddOrder={addOrder}
               onUpdateUser={updateUser}
               onUpdateSettings={setStoreSettings}
-              onAddCategory={(cat) => setCategories([...categories, cat])}
-              onDeleteCategory={(cat) => setCategories(categories.filter(c => c !== cat))}
+              onUpdateCourierSettings={setCourierSettings}
+              onUpdatePixelSettings={setPixelSettings}
+              onAddCategory={(catName) => setCategories([...categories, { id: Math.random().toString(36).substr(2, 9), name: catName, isActive: true }])}
+              onDeleteCategory={(catId) => setCategories(categories.filter(c => c.id !== catId))}
+              onUpdateCategory={(updatedCat) => setCategories(categories.map(c => c.id === updatedCat.id ? updatedCat : c))}
               onLogout={handleAdminLogout}
             />
           )
@@ -149,9 +228,13 @@ const App: React.FC = () => {
         {view === 'USER' && (
           <UserPanel 
             cart={cart} 
+            users={users}
             wishlist={wishlist}
             onViewProduct={handleProductClick}
             onPlaceOrder={placeOrder}
+            onUpdateCartItem={updateCartItem}
+            onRemoveFromCart={removeFromCart}
+            onCloseSuccess={handleCloseSuccess}
           />
         )}
       </main>
@@ -166,6 +249,18 @@ const App: React.FC = () => {
           </div>
         </footer>
       )}
+
+      <style>{`
+        @keyframes glowPulse {
+          0% { opacity: 0; }
+          25% { opacity: 1; }
+          75% { opacity: 1; }
+          100% { opacity: 0; }
+        }
+        .animate-glowPulse {
+          animation: glowPulse 2s ease-in-out forwards;
+        }
+      `}</style>
     </div>
   );
 };

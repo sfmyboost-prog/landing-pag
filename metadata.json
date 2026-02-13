@@ -1,5 +1,7 @@
 {
   "name": "EliteCommerce Pro x Dataflow",
   "description": "High-end ecommerce platform integrated with a full Dataflow-styled administrative dashboard and secure login gate.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "microphone"
+  ]
 }

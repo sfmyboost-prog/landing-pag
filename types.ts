@@ -18,12 +18,22 @@ export interface Product {
   stock: number;
   discountPercentage?: number;
   purchaseCost: number;
+  internalPrice: number; // "Our Price"
+  hasSizes?: boolean;
+  hasColors?: boolean;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  isActive: boolean;
 }
 
 export interface User {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   role: 'Admin' | 'Customer';
   status: 'Active' | 'Banned';
   createdAt: Date;
@@ -59,9 +69,10 @@ export interface Order {
   customerPhone: string;
   customerAddress: string;
   customerLocation: string;
+  customerCourierPreference?: 'Pathao' | 'SteadFast';
   items: CartItem[];
   totalPrice: number;
-  status: 'Paid' | 'Pending' | 'Cancel' | 'Processing';
+  paymentStatus: 'Paid' | 'Pending' | 'Cancel';
   orderStatus: 'Pending' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
   timestamp: Date;
   courierName?: 'Pathao' | 'SteadFast';

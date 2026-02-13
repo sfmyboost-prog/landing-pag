@@ -6,9 +6,10 @@ interface ProductLandingProps {
   mainProduct: Product;
   otherProducts: Product[];
   onProductClick: (p: Product) => void;
+  onOrderNow: (p: Product) => void;
 }
 
-const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, otherProducts, onProductClick }) => {
+const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, otherProducts, onProductClick, onOrderNow }) => {
   // Only show products that are not deactivated
   const activeOtherProducts = otherProducts.filter(p => p.isActive !== false);
 
@@ -29,10 +30,10 @@ const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, otherProdu
             <span className="text-xl text-gray-400 line-through">${mainProduct.originalPrice.toFixed(2)}</span>
           </div>
           <button 
-            onClick={() => onProductClick(mainProduct)}
+            onClick={() => onOrderNow(mainProduct)}
             className="bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-4 rounded-xl font-bold text-lg transition-all transform hover:scale-105 shadow-xl shadow-indigo-200 w-fit"
           >
-            Explore Now
+            Order Now
           </button>
         </div>
         <div className="w-full lg:w-1/2 h-[400px] lg:h-[600px] order-1 lg:order-2">

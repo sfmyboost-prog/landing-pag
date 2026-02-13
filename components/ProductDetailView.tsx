@@ -5,7 +5,7 @@ import { Product, CartItem } from '../types';
 interface ProductDetailViewProps {
   product: Product;
   onBack: () => void;
-  onAddToCart: (item: CartItem) => void;
+  onOrderNow: (item: CartItem) => void;
   onToggleWishlist: (product: Product) => void;
   isWishlisted: boolean;
 }
@@ -13,7 +13,7 @@ interface ProductDetailViewProps {
 const ProductDetailView: React.FC<ProductDetailViewProps> = ({ 
   product, 
   onBack, 
-  onAddToCart, 
+  onOrderNow, 
   onToggleWishlist, 
   isWishlisted 
 }) => {
@@ -22,8 +22,8 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({
   const [selectedColor, setSelectedColor] = useState(product.colors[0]);
   const [quantity, setQuantity] = useState(1);
 
-  const handleAddToCart = () => {
-    onAddToCart({
+  const handleOrderNow = () => {
+    onOrderNow({
       product,
       quantity,
       selectedSize,
@@ -102,7 +102,7 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({
               </div>
               <div>
                 <h4 className="text-gray-900 font-bold mb-1 text-sm">Delivery</h4>
-                <p className="text-gray-400 text-sm">{product.deliveryRegions.join(', ')}</p>
+                <p className="text-gray-400 text-sm">{(product.deliveryRegions || []).join(', ')}</p>
               </div>
             </div>
           </div>
@@ -154,11 +154,11 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({
           {/* Action Buttons */}
           <div className="flex gap-4">
             <button 
-              onClick={handleAddToCart}
+              onClick={handleOrderNow}
               className="flex-grow bg-gray-900 hover:bg-black text-white py-4 rounded-xl font-bold flex items-center justify-center gap-3 transition-all transform hover:scale-[1.02] shadow-xl"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
-              ADD TO CART
+              ORDER NOW
             </button>
             <button 
               onClick={() => onToggleWishlist(product)}
