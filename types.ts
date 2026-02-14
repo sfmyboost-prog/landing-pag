@@ -7,6 +7,7 @@ export interface Product {
   rating: number;
   reviewCount: number;
   description: string;
+  shortDescription?: string;
   images: string[];
   colors: string[];
   sizes: string[];
@@ -46,11 +47,17 @@ export interface CourierSettings {
     storeId: string;
     username: string;
     password: string;
+    baseUrl?: string;
+    enabled?: boolean;
+    mode?: 'Sandbox' | 'Live';
   };
   steadfast: {
     apiKey: string;
     secretKey: string;
     merchantId: string;
+    baseUrl?: string;
+    enabled?: boolean;
+    mode?: 'Sandbox' | 'Live';
   };
 }
 
@@ -59,6 +66,7 @@ export interface PixelSettings {
   appId: string;
   accessToken: string;
   testEventCode: string;
+  currency: string;
   status: 'Inactive' | 'Connecting' | 'Active';
 }
 
@@ -83,6 +91,7 @@ export interface Order {
   timestamp: Date;
   courierName?: 'Pathao' | 'SteadFast';
   courierTrackingId?: string;
+  customerNotes?: string;
 }
 
 export interface CartItem {

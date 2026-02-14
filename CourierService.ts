@@ -6,15 +6,11 @@ import { Order, CourierSettings } from './types';
  * Supports Pathao, SteadFast Courier, and Facebook Pixel CAPI.
  */
 
-const STEADFAST_BASE_URL = 'https://portal.steadfast.com.bd/api/v1';
-const PATHAO_BASE_URL = 'https://api-hermes.pathao.com/aladdin/api/v1';
+const STEADFAST_DEFAULT_URL = 'https://portal.steadfast.com.bd/api/v1';
+const PATHAO_DEFAULT_URL = 'https://api-hermes.pathao.com/aladdin/api/v1';
 
 // URL Verification Diagnostic
-if (STEADFAST_BASE_URL !== 'https://portal.steadfast.com.bd/api/v1') {
-  console.error(`[DIAGNOSTIC] STEADFAST_BASE_URL discrepancy found! Current: ${STEADFAST_BASE_URL}`);
-} else {
-  console.log(`[DIAGNOSTIC] STEADFAST_BASE_URL verified: ${STEADFAST_BASE_URL}`);
-}
+console.log(`[DIAGNOSTIC] Courier Services Initialized`);
 
 /**
  * Normalizes phone numbers to the local 11-digit format (01XXXXXXXXX).
@@ -141,7 +137,8 @@ export const CourierService = {
    * Health Check: Verify Pathao Connectivity
    */
   async verifyPathaoConnection(settings: CourierSettings['pathao']) {
-    const response = await fetchWithTimeout(`${PATHAO_BASE_URL}/issue-token`, {
+    const baseUrl = settings.baseUrl || PATHAO_DEFAULT_URL;
+    const response = await fetchWithTimeout(`${baseUrl}/issue-token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({
@@ -162,7 +159,8 @@ export const CourierService = {
   async verifySteadfastConnection(settings: CourierSettings['steadfast']) {
     if (!settings.apiKey || !settings.secretKey) throw new Error('Missing SteadFast API Key or Secret Key.');
     
-    const response = await fetchWithTimeout(`${STEADFAST_BASE_URL}/get_balance`, {
+    const baseUrl = settings.baseUrl || STEADFAST_DEFAULT_URL;
+    const response = await fetchWithTimeout(`${baseUrl}/get_balance`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -196,21 +194,25 @@ export const CourierService = {
    */
   async sendToSteadfast(order: Order, settings: CourierSettings['steadfast']) {
     const fullAddress = sanitizeString(`${order.customerAddress}, ${order.customerLocation}, Zip: ${order.customerZipCode}`, 250);
+    // Allow dynamic overrides if passed in via a modified order object
+    const dynamicOrder = order as any;
+    
     const payload = {
       invoice: sanitizeString(order.id, 50),
       recipient_name: sanitizeString(order.customerName, 100),
       recipient_phone: normalizePhone(order.customerPhone),
       recipient_address: fullAddress,
       cod_amount: Math.round(Number(order.totalPrice) || 0), 
-      note: 'Order via EliteCommerce'
+      note: dynamicOrder.courierNote || order.customerNotes || 'Order via EliteCommerce'
     };
 
+    const baseUrl = settings.baseUrl || STEADFAST_DEFAULT_URL;
     console.log('[API LOG] Dispatching Request to SteadFast:', {
-      url: `${STEADFAST_BASE_URL}/create_order`,
+      url: `${baseUrl}/create_order`,
       payload
     });
 
-    const response = await fetchWithTimeout(`${STEADFAST_BASE_URL}/create_order`, {
+    const response = await fetchWithTimeout(`${baseUrl}/create_order`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -245,9 +247,11 @@ export const CourierService = {
    */
   async sendToPathao(order: Order, settings: CourierSettings['pathao']) {
     const fullAddress = sanitizeString(`${order.customerAddress}, ${order.customerLocation}, Zip: ${order.customerZipCode}`, 200);
+    const baseUrl = settings.baseUrl || PATHAO_DEFAULT_URL;
+    const dynamicOrder = order as any;
 
     // 1. Get Token
-    const tokenResponse = await fetchWithTimeout(`${PATHAO_BASE_URL}/issue-token`, {
+    const tokenResponse = await fetchWithTimeout(`${baseUrl}/issue-token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({
@@ -275,10 +279,10 @@ export const CourierService = {
       item_type: 2, 
       delivery_type: 48, 
       item_quantity: 1,
-      item_weight: 0.5,
+      item_weight: dynamicOrder.weight ? Number(dynamicOrder.weight) : 0.5,
     };
 
-    const orderResponse = await fetchWithTimeout(`${PATHAO_BASE_URL}/orders`, {
+    const orderResponse = await fetchWithTimeout(`${baseUrl}/orders`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${tokenData.access_token}`,

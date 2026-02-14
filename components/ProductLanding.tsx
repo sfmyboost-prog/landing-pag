@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Product } from '../types';
 
 interface ProductLandingProps {
@@ -10,10 +10,25 @@ interface ProductLandingProps {
 }
 
 const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, otherProducts, onProductClick, onOrderNow }) => {
+  const [isZoomed, setIsZoomed] = useState(false);
   const activeOtherProducts = otherProducts.filter(p => p.isActive !== false);
 
   return (
     <div className="animate-fadeIn">
+      {/* Zoom Overlay */}
+      {isZoomed && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out transition-opacity duration-300"
+          onClick={() => setIsZoomed(false)}
+        >
+          <img 
+            src={mainProduct.images[0]} 
+            alt={mainProduct.name} 
+            className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl animate-scaleIn"
+          />
+        </div>
+      )}
+
       {/* Hero Section - Main Product focus */}
       <section className="relative min-h-[90vh] flex items-center bg-white overflow-hidden">
         <div className="absolute inset-0 z-0">
@@ -72,7 +87,10 @@ const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, otherProdu
           </div>
           
           <div className="order-1 lg:order-2 relative">
-             <div className="relative z-10 aspect-[4/5] lg:aspect-square overflow-hidden rounded-[3rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] group">
+             <div 
+               className="relative z-10 aspect-[4/5] lg:aspect-square overflow-hidden rounded-[3rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] group cursor-zoom-in"
+               onClick={() => setIsZoomed(true)}
+             >
                 <img 
                   src={mainProduct.images[0]} 
                   alt={mainProduct.name}
@@ -150,6 +168,16 @@ const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, otherProdu
           ))}
         </div>
       </section>
+      
+      <style>{`
+        @keyframes scaleIn {
+          from { transform: scale(0.9); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+        .animate-scaleIn {
+          animation: scaleIn 0.3s ease-out forwards;
+        }
+      `}</style>
     </div>
   );
 };

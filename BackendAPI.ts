@@ -1,7 +1,7 @@
 
 import { Product, Order, User, Category, StoreSettings, CourierSettings, PixelSettings, TwoFactorSettings } from './types';
 import { INITIAL_PRODUCTS } from './constants';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 
 const DB_KEY = 'elite_commerce_db';
 
@@ -54,6 +54,7 @@ const DEFAULT_DB: DB = {
     appId: '',
     accessToken: '',
     testEventCode: '',
+    currency: 'BDT',
     status: 'Inactive'
   },
   twoFactorSettings: {
@@ -63,25 +64,124 @@ const DEFAULT_DB: DB = {
   notifications: []
 };
 
+type DataChangeListener = (dataType: 'orders' | 'products' | 'users' | 'notifications', data: any) => void;
+
 class BackendAPI {
   private db: DB;
   private supabase: SupabaseClient;
+  private listeners: DataChangeListener[] = [];
+  private realtimeChannel: RealtimeChannel | null = null;
 
   constructor() {
     const stored = localStorage.getItem(DB_KEY);
     this.db = stored ? JSON.parse(stored) : DEFAULT_DB;
+    // Ensure dates are parsed correctly from JSON
+    if (this.db.orders) {
+      this.db.orders = this.db.orders.map(o => ({...o, timestamp: new Date(o.timestamp)}));
+    }
+    if (this.db.users) {
+      this.db.users = this.db.users.map(u => ({...u, createdAt: new Date(u.createdAt)}));
+    }
+
     if (!stored) this.save();
     this.supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+    this.initializeRealtime();
   }
 
   private save() {
     localStorage.setItem(DB_KEY, JSON.stringify(this.db));
   }
 
+  // --- Realtime Engine ---
+
+  private initializeRealtime() {
+    if (this.realtimeChannel) return;
+
+    this.realtimeChannel = this.supabase
+      .channel('db-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        (payload) => {
+          console.log('[Realtime] Order Update:', payload);
+          if (payload.eventType === 'INSERT') {
+            const newOrder = this.mapSupabaseOrder(payload.new);
+            this.db.orders.unshift(newOrder);
+            this.notifyListeners('orders', this.db.orders);
+            this.addNotification({
+              id: Date.now(),
+              title: 'New Order Received',
+              message: `Order #${newOrder.id} placed by ${newOrder.customerName}`,
+              timestamp: new Date(),
+              read: false,
+              type: 'order'
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            const updatedOrder = this.mapSupabaseOrder(payload.new);
+            const idx = this.db.orders.findIndex(o => o.id === updatedOrder.id);
+            if (idx > -1) {
+              this.db.orders[idx] = updatedOrder;
+              this.notifyListeners('orders', this.db.orders);
+            }
+          }
+          this.save();
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('[Realtime] Connected to Supabase');
+        }
+      });
+  }
+
+  public subscribe(listener: DataChangeListener) {
+    this.listeners.push(listener);
+    return () => {
+      this.listeners = this.listeners.filter(l => l !== listener);
+    };
+  }
+
+  private notifyListeners(dataType: 'orders' | 'products' | 'users' | 'notifications', data: any) {
+    this.listeners.forEach(l => l(dataType, data));
+  }
+
+  private addNotification(notification: any) {
+    this.db.notifications.unshift(notification);
+    this.save();
+    this.notifyListeners('notifications', this.db.notifications);
+  }
+
+  // --- Data Mapping ---
+
+  private mapSupabaseOrder(row: any): Order {
+    return {
+      id: row.id,
+      customerName: row.customer_name,
+      customerEmail: row.email,
+      customerPhone: row.phone,
+      customerAddress: row.street_address,
+      customerLocation: row.location,
+      customerZipCode: row.zip_code,
+      customerCourierPreference: row.courier_preference,
+      customerNotes: row.notes,
+      items: row.items || [],
+      totalPrice: row.total_amount,
+      paymentStatus: row.payment_status,
+      orderStatus: row.order_status,
+      timestamp: new Date(row.date_time),
+      courierName: row.courier_name,
+      courierTrackingId: row.courier_tracking_id
+    };
+  }
+
+  // --- CRUD Operations ---
+
   async clearSystemData(): Promise<void> {
     this.db.orders = [];
     this.db.notifications = [];
     this.save();
+    this.notifyListeners('orders', []);
+    this.notifyListeners('notifications', []);
   }
 
   async getProducts(): Promise<Product[]> {
@@ -93,71 +193,49 @@ class BackendAPI {
     if (idx > -1) this.db.products[idx] = product;
     else this.db.products.push(product);
     this.save();
+    this.notifyListeners('products', this.db.products);
     return product;
   }
 
   async deleteProduct(id: string): Promise<void> {
     this.db.products = this.db.products.filter(p => p.id !== id);
     this.save();
+    this.notifyListeners('products', this.db.products);
   }
 
-  async getOrders(): Promise<Order[]> {
-    try {
-      const { data, error } = await this.supabase
-        .from('orders')
-        .select('*')
-        .order('date_time', { ascending: false });
+  async getOrders(forceRefresh = false): Promise<Order[]> {
+    if (forceRefresh || this.db.orders.length === 0) {
+      try {
+        const { data, error } = await this.supabase
+          .from('orders')
+          .select('*')
+          .order('date_time', { ascending: false })
+          .limit(100);
 
-      if (error) {
-        if (error.code === '401' || error.message.includes('API key')) {
-          console.error('Supabase Auth Error: Invalid API Key. Falling back to local storage.');
-        } else {
-          throw error;
+        if (!error && data) {
+          this.db.orders = data.map(this.mapSupabaseOrder);
+          this.save();
         }
+      } catch (err) {
+        console.warn('Supabase fetch failed, using local cache:', err);
       }
-      
-      if (data) {
-        const mappedOrders: Order[] = data.map(row => ({
-          id: row.id,
-          customerName: row.customer_name,
-          customerEmail: row.email,
-          customerPhone: row.phone,
-          customerAddress: row.street_address,
-          customerLocation: row.location,
-          customerZipCode: row.zip_code,
-          customerCourierPreference: row.courier_preference,
-          items: row.items,
-          totalPrice: row.total_amount,
-          paymentStatus: row.payment_status,
-          orderStatus: row.order_status,
-          timestamp: new Date(row.date_time),
-          courierName: row.courier_name,
-          courierTrackingId: row.courier_tracking_id
-        }));
-
-        this.db.orders = mappedOrders;
-        this.save();
-        return mappedOrders;
-      }
-      
-      return [...this.db.orders];
-    } catch (err) {
-      console.warn('Supabase fetch failed:', err);
-      return [...this.db.orders];
     }
+    return [...this.db.orders];
   }
 
   async createOrder(order: Order): Promise<Order> {
-    // Add to local immediately for responsiveness
+    // Optimistic Update
     this.db.orders.unshift(order);
-    this.db.notifications.unshift({
+    this.addNotification({
       id: Date.now(),
       title: 'New Order Received',
       message: `Order #${order.id} placed by ${order.customerName}`,
       timestamp: new Date(),
-      read: false
+      read: false,
+      type: 'order'
     });
     this.save();
+    this.notifyListeners('orders', this.db.orders);
 
     try {
       const { error } = await this.supabase
@@ -175,15 +253,15 @@ class BackendAPI {
           payment_status: order.paymentStatus,
           order_status: order.orderStatus,
           courier_preference: order.customerCourierPreference,
+          notes: order.customerNotes,
           date_time: order.timestamp.toISOString()
         }]);
 
       if (error) throw error;
-      return order;
     } catch (err) {
       console.error('Supabase Sync Failed (Order saved locally):', err);
-      return order;
     }
+    return order;
   }
 
   async updateOrder(order: Order): Promise<Order> {
@@ -191,6 +269,7 @@ class BackendAPI {
     if (idx > -1) {
       this.db.orders[idx] = order;
       this.save();
+      this.notifyListeners('orders', this.db.orders);
     }
 
     try {
@@ -200,16 +279,16 @@ class BackendAPI {
           payment_status: order.paymentStatus,
           order_status: order.orderStatus,
           courier_name: order.courierName,
-          courier_tracking_id: order.courierTrackingId
+          courier_tracking_id: order.courierTrackingId,
+          notes: order.customerNotes
         })
         .eq('id', order.id);
 
       if (error) throw error;
-      return order;
     } catch (err) {
       console.error('Supabase Sync Failed (Update saved locally):', err);
-      return order;
     }
+    return order;
   }
 
   async getUsers(): Promise<User[]> {
@@ -221,6 +300,7 @@ class BackendAPI {
     if (idx > -1) {
       this.db.users[idx] = user;
       this.save();
+      this.notifyListeners('users', this.db.users);
     }
     return user;
   }
@@ -232,6 +312,7 @@ class BackendAPI {
   async markNotificationsAsRead(): Promise<void> {
     this.db.notifications.forEach(n => n.read = true);
     this.save();
+    this.notifyListeners('notifications', this.db.notifications);
   }
 
   async getCourierSettings(): Promise<CourierSettings> {
@@ -261,61 +342,119 @@ class BackendAPI {
     this.save();
   }
 
+  // --- Metrics Calculation Engine ---
+
   async getDashboardMetrics(yearOffset: number = 0) {
+    // Ensure we are working with the latest in-memory data which is synced with DB
     const orders = this.db.orders;
     const products = this.db.products;
     const users = this.db.users;
 
     const currentYear = new Date().getFullYear() + yearOffset;
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
+    // 1. Total Earnings
     const earningsCurrent = orders
       .filter(o => o.paymentStatus === 'Paid' && new Date(o.timestamp).getFullYear() === currentYear)
       .reduce((acc, o) => acc + o.totalPrice, 0);
 
-    const totalProfit = orders
-      .filter(o => o.paymentStatus === 'Paid' && new Date(o.timestamp).getFullYear() === currentYear)
-      .reduce((acc, o) => {
-        const orderProfit = o.items.reduce((s, it) => {
-          return s + ((it.product.price - (it.product.purchaseCost || 0)) * it.quantity);
-        }, 0);
-        return acc + orderProfit;
-      }, 0);
-
-    const activeCustomers = new Set(orders.map(o => o.customerEmail)).size || users.length;
-    
+    // 2. Monthly Revenue Data for Charts
     const monthlyRevenue = Array(12).fill(0);
     const monthlyOrders = Array(12).fill(0);
+    const lastYearRevenue = Array(12).fill(0);
 
     orders.forEach(o => {
       const date = new Date(o.timestamp);
+      const month = date.getMonth();
+      
       if (date.getFullYear() === currentYear) {
-        const month = date.getMonth();
-        monthlyRevenue[month] += o.totalPrice;
+        if (o.paymentStatus === 'Paid') {
+          monthlyRevenue[month] += o.totalPrice;
+        }
         monthlyOrders[month] += 1;
+      } else if (date.getFullYear() === currentYear - 1 && o.paymentStatus === 'Paid') {
+        lastYearRevenue[month] += o.totalPrice;
       }
     });
 
-    const topSales = products
-      .map(p => {
-        const count = orders.reduce((acc, o) => {
-          return acc + o.items.filter(it => it.product.id === p.id).reduce((s, i) => s + i.quantity, 0);
+    // 3. Growth Calculation
+    const thisMonthRevenue = orders
+      .filter(o => o.paymentStatus === 'Paid' && new Date(o.timestamp) >= startOfMonth)
+      .reduce((acc, o) => acc + o.totalPrice, 0);
+    
+    const lastMonthRevenue = orders
+      .filter(o => o.paymentStatus === 'Paid' && new Date(o.timestamp) >= startOfLastMonth && new Date(o.timestamp) <= endOfLastMonth)
+      .reduce((acc, o) => acc + o.totalPrice, 0);
+
+    const growth = lastMonthRevenue > 0 
+      ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 
+      : 100;
+
+    // 4. Calculate Total Profit based on (Price - PurchaseCost) for all paid orders in current year
+    const totalProfit = orders
+      .filter(o => o.paymentStatus === 'Paid' && new Date(o.timestamp).getFullYear() === currentYear)
+      .reduce((acc, order) => {
+        // Calculate the total cost of items in this order
+        const orderCost = order.items.reduce((sum, item) => {
+            const cost = item.product.purchaseCost || 0;
+            return sum + (cost * item.quantity);
         }, 0);
-        return { p, count };
-      })
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 6);
+        // Profit is Revenue (totalPrice) - Cost
+        // Note: This assumes totalPrice tracks revenue. If shipping is separate, adjust accordingly.
+        // For now we assume totalPrice is gross revenue.
+        return acc + (order.totalPrice - orderCost);
+      }, 0);
+
+    // 5. Top Selling Products
+    const productSales: Record<string, number> = {};
+    orders.forEach(o => {
+      o.items.forEach(item => {
+        productSales[item.product.id] = (productSales[item.product.id] || 0) + item.quantity;
+      });
+    });
+
+    const topSales = products
+      .map(p => ({
+        ...p,
+        totalSold: productSales[p.id] || 0
+      }))
+      .sort((a, b) => b.totalSold - a.totalSold)
+      .slice(0, 5);
+
+    // 6. Customer Geography
+    const locationData: Record<string, number> = {};
+    orders.forEach(o => {
+      const loc = o.customerLocation || 'Dhaka';
+      locationData[loc] = (locationData[loc] || 0) + 1;
+    });
+    
+    // 7. Sales Source (Simulated for Donut Chart as we don't track source explicitly in DB yet)
+    // We will distribute based on payment status or random for visualization if data missing
+    const salesSource = {
+      website: orders.filter(o => o.items.length > 0).length,
+      store: 0,
+      social: orders.filter(o => o.customerNotes?.toLowerCase().includes('fb') || o.customerNotes?.toLowerCase().includes('insta')).length
+    };
+    // Adjust logic to make sure we have data
+    salesSource.website = salesSource.website - salesSource.social;
 
     return {
       totalEarnings: earningsCurrent,
       totalOrders: orders.length,
-      customers: activeCustomers,
-      totalProfit: totalProfit,
-      growth: 1.56,
+      customers: users.length, // Real count from users table
+      totalProfit: totalProfit, // Use calculated profit
+      growth: parseFloat(growth.toFixed(1)),
       revenueSeries: monthlyRevenue,
       orderSeries: monthlyOrders,
+      lastYearRevenueSeries: lastYearRevenue,
       topSales,
       recentOrders: orders.slice(0, 10),
-      currentYear
+      currentYear,
+      locationData,
+      salesSource
     };
   }
 }

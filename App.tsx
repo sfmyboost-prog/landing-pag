@@ -2,6 +2,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { ViewState, Product, CartItem, Order, User, StoreSettings, CourierSettings, Category, PixelSettings } from './types';
 import { api } from './BackendAPI';
+import { PixelService } from './PixelService';
 import Navbar from './components/Navbar';
 import ProductLanding from './components/ProductLanding';
 import ProductDetailView from './components/ProductDetailView';
@@ -36,6 +37,7 @@ const App: React.FC = () => {
     appId: '',
     accessToken: '',
     testEventCode: '',
+    currency: 'BDT',
     status: 'Inactive'
   });
   
@@ -65,6 +67,11 @@ const App: React.FC = () => {
       setUsers(u);
       setCourierSettings(cs);
       setPixelSettings(ps);
+
+      // Initialize Pixel Tracking if active
+      if (ps.status === 'Active' && ps.pixelId) {
+        PixelService.initializeBrowserPixel(ps.pixelId);
+      }
     };
     fetchData();
   }, [view]);
@@ -72,8 +79,22 @@ const App: React.FC = () => {
   const mainProduct = products.find(p => p.isMain) || products[0];
 
   const handleProductClick = useCallback((product: Product) => {
-    handleOrderNow(product);
-  }, []);
+    const directItem: CartItem = {
+      product,
+      quantity: 1,
+      selectedSize: product.sizes[0] || 'M',
+      selectedColor: product.colors[0] || '#000'
+    };
+    setCart([directItem]);
+    setView('USER');
+    
+    // Tracking AddToCart
+    PixelService.trackEvent('AddToCart', {
+      value: product.price,
+      content_ids: [product.id],
+      content_type: 'product'
+    }, pixelSettings);
+  }, [pixelSettings]);
 
   const handleOrderNow = (item: CartItem | Product) => {
     if ('id' in item) {
@@ -88,6 +109,14 @@ const App: React.FC = () => {
       setCart([item]);
     }
     setView('USER');
+    
+    // Tracking InitiateCheckout
+    const product = 'id' in item ? item : item.product;
+    PixelService.trackEvent('InitiateCheckout', {
+      value: product.price,
+      content_ids: [product.id],
+      content_type: 'product'
+    }, pixelSettings);
   };
 
   const updateCartItem = (index: number, updates: Partial<CartItem>) => {
@@ -104,47 +133,10 @@ const App: React.FC = () => {
 
   const clearCart = () => setCart([]);
 
-  /**
-   * Triggers Facebook Conversions API (CAPI) for Purchase event
-   */
-  const trackPixelPurchase = async (order: Order) => {
-    if (!pixelSettings.pixelId || !pixelSettings.accessToken || pixelSettings.status !== 'Active') return;
-    
-    try {
-      const payload = {
-        data: [{
-          event_name: 'Purchase',
-          event_time: Math.floor(Date.now() / 1000),
-          action_source: 'website',
-          user_data: {
-            em: [order.customerEmail], // Hash in production
-            ph: [order.customerPhone], // Hash in production
-          },
-          custom_data: {
-            currency: 'BDT',
-            value: order.totalPrice,
-            content_ids: order.items.map(it => it.product.id),
-            content_type: 'product'
-          },
-          test_event_code: pixelSettings.testEventCode || undefined
-        }]
-      };
-
-      await fetch(`https://graph.facebook.com/v18.0/${pixelSettings.pixelId}/events?access_token=${pixelSettings.accessToken}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-    } catch (e) {
-      console.error('CAPI Tracking Failed:', e);
-    }
-  };
-
-  const placeOrder = async (details: { name: string; email: string; phone: string; address: string; location: string; zipCode: string; courier: 'Pathao' | 'SteadFast' | '' }) => {
+  const placeOrder = async (details: { name: string; email: string; phone: string; address: string; location: string; zipCode: string; notes: string; courier: 'Pathao' | 'SteadFast' | '' }) => {
     if (cart.length === 0) return;
     const totalPrice = cart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
     
-    // Generate a unique Invoice ID: YYMMDD-RANDOM (Avoids courier 500 errors on duplicates)
     const datePart = new Date().toISOString().slice(2, 10).replace(/-/g, '');
     const randomPart = Math.floor(1000 + Math.random() * 9000);
     const orderId = `${datePart}-${randomPart}`;
@@ -158,6 +150,7 @@ const App: React.FC = () => {
       customerLocation: details.location,
       customerZipCode: details.zipCode,
       customerCourierPreference: details.courier as 'Pathao' | 'SteadFast',
+      customerNotes: details.notes,
       items: [...cart],
       totalPrice,
       paymentStatus: 'Paid',
@@ -168,8 +161,8 @@ const App: React.FC = () => {
     await api.createOrder(newOrder);
     setOrders(prev => [newOrder, ...prev]);
     
-    // Fire tracking event
-    trackPixelPurchase(newOrder);
+    // Universal Pixel Purchase Tracking
+    PixelService.trackPurchase(newOrder, pixelSettings);
     
     clearCart();
   };

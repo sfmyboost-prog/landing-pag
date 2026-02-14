@@ -69,7 +69,10 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({
         {/* Right Column: Details */}
         <div className="flex flex-col">
           <div className="mb-6">
-            <h1 className="text-3xl font-extrabold text-gray-900 mb-2">{product.name}</h1>
+            <h1 className="text-3xl font-extrabold text-gray-900 mb-1">{product.name}</h1>
+            {product.shortDescription && (
+              <p className="text-indigo-600 font-bold text-sm mb-3 uppercase tracking-wide">{product.shortDescription}</p>
+            )}
             <div className="flex items-center gap-4">
               <div className="flex text-yellow-400">
                 {[...Array(5)].map((_, i) => (
@@ -89,7 +92,7 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({
 
           <div className="space-y-6 mb-10">
             <div>
-              <h4 className="text-gray-900 font-bold mb-2">Description :</h4>
+              <h4 className="text-gray-900 font-bold mb-2 uppercase text-[10px] tracking-widest text-gray-400">Description</h4>
               <p className="text-gray-600 leading-relaxed text-sm">
                 {product.description}
               </p>
@@ -97,12 +100,12 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <h4 className="text-gray-900 font-bold mb-1 text-sm">Product id</h4>
-                <p className="text-gray-400 text-sm">{product.productId}</p>
+                <h4 className="text-gray-900 font-bold mb-1 text-[10px] uppercase tracking-widest text-gray-400">Product id</h4>
+                <p className="text-gray-900 font-bold text-sm">{product.productId}</p>
               </div>
               <div>
-                <h4 className="text-gray-900 font-bold mb-1 text-sm">Delivery</h4>
-                <p className="text-gray-400 text-sm">{(product.deliveryRegions || []).join(', ')}</p>
+                <h4 className="text-gray-900 font-bold mb-1 text-[10px] uppercase tracking-widest text-gray-400">Delivery</h4>
+                <p className="text-gray-900 font-bold text-sm">{(product.deliveryRegions || []).join(', ')}</p>
               </div>
             </div>
           </div>
@@ -110,7 +113,7 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({
           {/* Selectors */}
           <div className="grid grid-cols-2 gap-4 mb-8">
             <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700">Quantity</label>
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Quantity</label>
               <select 
                 value={quantity}
                 onChange={(e) => setQuantity(Number(e.target.value))}
@@ -120,7 +123,7 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700">Size</label>
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Size</label>
               <select 
                 value={selectedSize}
                 onChange={(e) => setSelectedSize(e.target.value)}
@@ -132,7 +135,7 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({
           </div>
 
           <div className="mb-8">
-            <h4 className="text-sm font-bold text-gray-700 mb-3">Colors</h4>
+            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1 mb-3">Available Colors</h4>
             <div className="flex gap-4">
               {product.colors.map(color => (
                 <button
@@ -167,7 +170,7 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({
               }`}
             >
               <svg className={`w-5 h-5 ${isWishlisted ? 'fill-current' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
-              {isWishlisted ? 'WISHLISTED' : 'ADD TO WISHLIST'}
+              {isWishlisted ? 'SAVED' : 'WISHLIST'}
             </button>
           </div>
         </div>
