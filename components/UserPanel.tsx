@@ -31,7 +31,7 @@ const CheckoutProductVisual: React.FC<{ item: CartItem, onRemove: () => void }> 
   }, [item.product.images.length, activeImageIndex, isZoomed]);
 
   return (
-    <div className="flex flex-col gap-8 animate-fadeIn">
+    <div className="flex flex-col gap-6 md:gap-8 animate-fadeIn">
       {/* Zoom Overlay */}
       {isZoomed && (
         <div 
@@ -46,10 +46,10 @@ const CheckoutProductVisual: React.FC<{ item: CartItem, onRemove: () => void }> 
         </div>
       )}
 
-      {/* Product Header - Matching Screenshot */}
-      <div className="flex justify-between items-start">
-        <div className="space-y-1">
-          <h2 className="text-4xl font-black text-gray-900 tracking-tighter leading-none">{item.product.name}</h2>
+      {/* Product Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+        <div className="space-y-1 w-full">
+          <h2 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tighter leading-tight md:leading-none">{item.product.name}</h2>
           <div className="flex items-center gap-1.5">
             <div className="flex text-yellow-400">
               {[...Array(5)].map((_, i) => (
@@ -61,11 +61,11 @@ const CheckoutProductVisual: React.FC<{ item: CartItem, onRemove: () => void }> 
             <span className="text-[10px] font-bold text-gray-400 ml-1 uppercase tracking-widest">Premium Selection</span>
           </div>
         </div>
-        <div className="flex flex-col items-end">
-          <span className="text-5xl font-black text-[#5844FF] tracking-tighter leading-none">TK{item.product.price.toLocaleString()}</span>
+        <div className="flex flex-row md:flex-col justify-between md:justify-start items-center md:items-end w-full md:w-auto gap-4 md:gap-0">
+          <span className="text-3xl md:text-5xl font-black text-[#5844FF] tracking-tighter leading-none">TK{item.product.price.toLocaleString()}</span>
           <button 
             onClick={onRemove} 
-            className="mt-1 text-[10px] font-black text-gray-300 hover:text-red-500 uppercase tracking-widest transition-colors"
+            className="md:mt-1 text-[10px] font-black text-gray-300 hover:text-red-500 uppercase tracking-widest transition-colors"
           >
             REMOVE ITEM
           </button>
@@ -74,15 +74,15 @@ const CheckoutProductVisual: React.FC<{ item: CartItem, onRemove: () => void }> 
 
       {/* Main Image Slider with Sliding Transition */}
       <div 
-        className="w-full bg-white rounded-[44px] shadow-sm ring-1 ring-gray-100 overflow-hidden relative cursor-zoom-in group"
+        className="w-full bg-white rounded-[30px] md:rounded-[44px] shadow-sm ring-1 ring-gray-100 overflow-hidden relative cursor-zoom-in group"
         onClick={() => setIsZoomed(true)}
       >
         <div 
-          className="flex transition-transform duration-700 ease-in-out h-[600px] items-center" 
+          className="flex transition-transform duration-700 ease-in-out h-[350px] md:h-[600px] items-center" 
           style={{ transform: `translateX(-${activeImageIndex * 100}%)` }}
         >
           {item.product.images.map((img, idx) => (
-            <div key={idx} className="min-w-full h-full flex justify-center items-center p-6">
+            <div key={idx} className="min-w-full h-full flex justify-center items-center p-4 md:p-6">
               <img 
                 src={img} 
                 className="max-h-full max-w-full object-contain" 
@@ -101,26 +101,26 @@ const CheckoutProductVisual: React.FC<{ item: CartItem, onRemove: () => void }> 
 
       {/* Thumbnails Section */}
       <div className="flex flex-col gap-6">
-        <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 px-1">
+        <div className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar pb-2 px-1">
           {item.product.images.map((img, imgIdx) => (
             <button 
               key={imgIdx} 
               onClick={() => setActiveImageIndex(imgIdx)}
-              className={`relative flex-shrink-0 w-24 h-24 rounded-[24px] overflow-hidden bg-white border-2 transition-all hover:scale-105 ${activeImageIndex === imgIdx ? 'border-[#5844FF] shadow-lg shadow-[#5844FF]/20' : 'border-gray-100 opacity-60'}`}
+              className={`relative flex-shrink-0 w-16 h-16 md:w-24 md:h-24 rounded-[16px] md:rounded-[24px] overflow-hidden bg-white border-2 transition-all hover:scale-105 ${activeImageIndex === imgIdx ? 'border-[#5844FF] shadow-lg shadow-[#5844FF]/20' : 'border-gray-100 opacity-60'}`}
             >
               <img src={img} className="w-full h-full object-cover" alt={`${item.product.name} thumb ${imgIdx}`} />
               {activeImageIndex === imgIdx && (
-                <div className="absolute inset-0 border-4 border-[#5844FF] rounded-[24px] pointer-events-none" />
+                <div className="absolute inset-0 border-2 md:border-4 border-[#5844FF] rounded-[16px] md:rounded-[24px] pointer-events-none" />
               )}
             </button>
           ))}
         </div>
 
-        {/* Short Description - Below Images as requested */}
+        {/* Short Description */}
         {item.product.shortDescription && (
-          <div className="mt-4 px-2">
-            <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Product Overview</h4>
-            <p className="text-gray-600 font-medium leading-relaxed max-w-2xl">
+          <div className="mt-2 md:mt-4 px-1 md:px-2">
+            <h4 className="text-[10px] md:text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2 md:mb-3">Product Overview</h4>
+            <p className="text-sm md:text-base text-gray-600 font-medium leading-relaxed max-w-2xl">
               {item.product.shortDescription}
             </p>
           </div>
@@ -216,39 +216,39 @@ const UserPanel: React.FC<UserPanelProps> = ({
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-12 animate-fadeIn min-h-[70vh]">
+    <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 md:py-12 animate-fadeIn min-h-[70vh]">
       {cart.length > 0 ? (
-        <div className="flex flex-col lg:flex-row gap-16">
+        <div className="flex flex-col lg:flex-row gap-10 lg:gap-16">
           {/* Main Content: Product Details & Form */}
-          <div className="lg:w-2/3 space-y-20">
-            <div className="space-y-16">
+          <div className="lg:w-2/3 space-y-12 md:space-y-20">
+            <div className="space-y-12 md:space-y-16">
               {cart.map((item, idx) => (
                 <CheckoutProductVisual key={idx} item={item} onRemove={() => onRemoveFromCart(idx)} />
               ))}
             </div>
             
             {/* Delivery Information Section - Enhanced look */}
-            <div className="bg-[#EAEFF5] p-8 md:p-14 rounded-[50px] shadow-sm">
-              <h3 className="text-3xl font-black text-gray-900 mb-12 tracking-tight">Delivery Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            <div className="bg-[#EAEFF5] p-6 md:p-14 rounded-[30px] md:rounded-[50px] shadow-sm">
+              <h3 className="text-2xl md:text-3xl font-black text-gray-900 mb-8 md:mb-12 tracking-tight">Delivery Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
                 <div className="space-y-3">
-                  <label className={`text-[11px] font-black uppercase tracking-widest ml-1 ${errors.name ? 'text-red-500' : 'text-gray-400'}`}>
+                  <label className={`text-[10px] md:text-[11px] font-black uppercase tracking-widest ml-1 ${errors.name ? 'text-red-500' : 'text-gray-400'}`}>
                     FULL NAME
                   </label>
                   <input 
                     value={formData.name} 
                     onChange={e => handleInputChange('name', e.target.value)}
-                    className={`w-full px-6 py-5 bg-white rounded-2xl border-none outline-none font-bold shadow-sm transition-all focus:ring-2 ${errors.name ? 'ring-2 ring-red-500 text-red-600 placeholder:text-red-300' : 'focus:ring-indigo-100 text-gray-700'}`} 
+                    className={`w-full px-5 py-4 md:px-6 md:py-5 bg-white rounded-2xl border-none outline-none font-bold shadow-sm transition-all focus:ring-2 ${errors.name ? 'ring-2 ring-red-500 text-red-600 placeholder:text-red-300' : 'focus:ring-indigo-100 text-gray-700'}`} 
                     placeholder="Enter your full name"
                   />
                 </div>
 
                 <div className="space-y-3">
-                  <label className={`text-[11px] font-black uppercase tracking-widest ml-1 ${errors.phone ? 'text-red-500' : 'text-gray-400'}`}>
+                  <label className={`text-[10px] md:text-[11px] font-black uppercase tracking-widest ml-1 ${errors.phone ? 'text-red-500' : 'text-gray-400'}`}>
                     PHONE NUMBER
                   </label>
                   <div className={`flex items-center bg-white rounded-2xl shadow-sm transition-all focus-within:ring-2 ${errors.phone ? 'ring-2 ring-red-500' : 'focus-within:ring-indigo-100'}`}>
-                    <span className={`pl-6 py-5 font-bold border-r border-gray-100 pr-3 ${errors.phone ? 'text-red-500' : 'text-gray-400'}`}>+880</span>
+                    <span className={`pl-5 py-4 md:pl-6 md:py-5 font-bold border-r border-gray-100 pr-3 ${errors.phone ? 'text-red-500' : 'text-gray-400'}`}>+880</span>
                     <input 
                       type="tel"
                       value={formData.phone} 
@@ -256,47 +256,47 @@ const UserPanel: React.FC<UserPanelProps> = ({
                         const val = e.target.value.replace(/\D/g, '').slice(0, 10);
                         handleInputChange('phone', val);
                       }}
-                      className={`flex-grow px-4 py-5 bg-transparent border-none outline-none font-bold ${errors.phone ? 'text-red-600 placeholder:text-red-300' : 'text-gray-700'}`} 
+                      className={`flex-grow px-4 py-4 md:py-5 bg-transparent border-none outline-none font-bold ${errors.phone ? 'text-red-600 placeholder:text-red-300' : 'text-gray-700'}`} 
                       placeholder="17XXXXXXXX"
                     />
                   </div>
                 </div>
 
                 <div className="md:col-span-2 space-y-3">
-                  <label className="text-[11px] font-black uppercase tracking-widest ml-1 text-gray-400">
+                  <label className="text-[10px] md:text-[11px] font-black uppercase tracking-widest ml-1 text-gray-400">
                     EMAIL ADDRESS (OPTIONAL)
                   </label>
                   <input 
                     type="email"
                     value={formData.email} 
                     onChange={e => handleInputChange('email', e.target.value)}
-                    className="w-full px-8 py-5 bg-white rounded-2xl border-none outline-none font-bold shadow-sm focus:ring-2 focus:ring-indigo-100 text-gray-700" 
+                    className="w-full px-5 py-4 md:px-8 md:py-5 bg-white rounded-2xl border-none outline-none font-bold shadow-sm focus:ring-2 focus:ring-indigo-100 text-gray-700" 
                     placeholder="name@example.com"
                   />
                 </div>
 
                 <div className="md:col-span-2 space-y-3">
-                  <label className={`text-[11px] font-black uppercase tracking-widest ml-1 ${errors.address ? 'text-red-500' : 'text-gray-400'}`}>
+                  <label className={`text-[10px] md:text-[11px] font-black uppercase tracking-widest ml-1 ${errors.address ? 'text-red-500' : 'text-gray-400'}`}>
                     SHIPPING ADDRESS
                   </label>
                   <textarea 
                     value={formData.address} 
                     onChange={e => handleInputChange('address', e.target.value)}
                     rows={4} 
-                    className={`w-full px-8 py-6 bg-white rounded-[32px] border-none outline-none font-bold shadow-sm resize-none transition-all focus:ring-2 ${errors.address ? 'ring-2 ring-red-500 text-red-600 placeholder:text-red-300' : 'focus:ring-indigo-100 text-gray-700'}`} 
+                    className={`w-full px-5 py-5 md:px-8 md:py-6 bg-white rounded-[24px] md:rounded-[32px] border-none outline-none font-bold shadow-sm resize-none transition-all focus:ring-2 ${errors.address ? 'ring-2 ring-red-500 text-red-600 placeholder:text-red-300' : 'focus:ring-indigo-100 text-gray-700'}`} 
                     placeholder="House No, Street, Area, City"
                   />
                 </div>
 
                 <div className="md:col-span-2 space-y-3">
-                  <label className="text-[11px] font-black uppercase tracking-widest ml-1 text-gray-400">
+                  <label className="text-[10px] md:text-[11px] font-black uppercase tracking-widest ml-1 text-gray-400">
                     ORDER NOTES
                   </label>
                   <textarea 
                     value={formData.notes} 
                     onChange={e => handleInputChange('notes', e.target.value)}
                     rows={2} 
-                    className="w-full px-8 py-5 bg-white rounded-2xl border-none outline-none font-bold shadow-sm resize-none transition-all focus:ring-2 focus:ring-indigo-100 text-gray-700" 
+                    className="w-full px-5 py-4 md:px-8 md:py-5 bg-white rounded-2xl border-none outline-none font-bold shadow-sm resize-none transition-all focus:ring-2 focus:ring-indigo-100 text-gray-700" 
                     placeholder="Additional instructions..."
                   />
                 </div>
@@ -306,26 +306,26 @@ const UserPanel: React.FC<UserPanelProps> = ({
 
           {/* Sidebar Sidebar - Matching Screenshot */}
           <div className="lg:w-1/3">
-            <div className="bg-[#111827] text-white rounded-[50px] p-10 md:p-14 sticky top-24 shadow-2xl overflow-hidden relative">
+            <div className="bg-[#111827] text-white rounded-[30px] md:rounded-[50px] p-8 md:p-14 sticky top-24 shadow-2xl overflow-hidden relative">
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl translate-x-10 -translate-y-10" />
               
-              <h3 className="text-3xl font-black mb-12 tracking-tight">Order Summary</h3>
+              <h3 className="text-2xl md:text-3xl font-black mb-8 md:mb-12 tracking-tight">Order Summary</h3>
               
-              <div className="space-y-6 mb-12 border-b border-white/5 pb-12">
-                 <div className="flex justify-between items-center text-gray-400 font-black uppercase text-[11px] tracking-widest">
+              <div className="space-y-4 md:space-y-6 mb-8 md:mb-12 border-b border-white/5 pb-8 md:pb-12">
+                 <div className="flex justify-between items-center text-gray-400 font-black uppercase text-[10px] md:text-[11px] tracking-widest">
                    <span>SUBTOTAL</span>
                    <span className="text-white text-base">TK{total.toLocaleString()}</span>
                  </div>
-                 <div className="flex justify-between items-center text-gray-400 font-black uppercase text-[11px] tracking-widest">
+                 <div className="flex justify-between items-center text-gray-400 font-black uppercase text-[10px] md:text-[11px] tracking-widest">
                    <span>SHIPPING</span>
                    <span className="text-emerald-400 text-base">FREE</span>
                  </div>
 
-                 <div className="pt-12 text-center">
-                    <span className="text-gray-500 text-[11px] font-black uppercase tracking-[0.3em] block mb-2">TOTAL AMOUNT DUE</span>
+                 <div className="pt-8 md:pt-12 text-center">
+                    <span className="text-gray-500 text-[10px] md:text-[11px] font-black uppercase tracking-[0.3em] block mb-2">TOTAL AMOUNT DUE</span>
                     <div className="flex items-start justify-center gap-1">
-                       <span className="text-2xl font-black text-white/30 mt-4">TK</span>
-                       <span className="text-7xl md:text-8xl font-black tracking-tighter text-white">{total.toLocaleString()}</span>
+                       <span className="text-xl md:text-2xl font-black text-white/30 mt-2 md:mt-4">TK</span>
+                       <span className="text-6xl md:text-7xl lg:text-8xl font-black tracking-tighter text-white">{total.toLocaleString()}</span>
                     </div>
                  </div>
               </div>
@@ -333,12 +333,12 @@ const UserPanel: React.FC<UserPanelProps> = ({
               <button 
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="w-full bg-[#5844FF] hover:bg-[#4a36ff] text-white py-6 rounded-3xl font-black text-xl transition-all shadow-xl disabled:opacity-50 transform hover:scale-[1.02] active:scale-95 z-10 relative"
+                className="w-full bg-[#5844FF] hover:bg-[#4a36ff] text-white py-5 md:py-6 rounded-2xl md:rounded-3xl font-black text-lg md:text-xl transition-all shadow-xl disabled:opacity-50 transform hover:scale-[1.02] active:scale-95 z-10 relative"
               >
                 {isSubmitting ? 'Processing...' : 'Complete Purchase'}
               </button>
               
-              <p className="text-[10px] text-gray-500 text-center mt-8 uppercase font-bold tracking-widest leading-loose">
+              <p className="text-[9px] md:text-[10px] text-gray-500 text-center mt-6 md:mt-8 uppercase font-bold tracking-widest leading-loose">
                 SECURE CHECKOUT POWERED BY DATAFLOW<br/>
                 YOUR DATA IS PROTECTED
               </p>
@@ -348,7 +348,7 @@ const UserPanel: React.FC<UserPanelProps> = ({
       ) : (
         <div className="space-y-12">
           <div className="flex justify-between items-center border-b border-gray-100 pb-8">
-            <h2 className="text-4xl font-black text-gray-900 tracking-tighter">My Dibba</h2>
+            <h2 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tighter">My Dibba</h2>
           </div>
           
           {orders.length === 0 ? (
@@ -356,18 +356,18 @@ const UserPanel: React.FC<UserPanelProps> = ({
           ) : (
             <div className="grid grid-cols-1 gap-6">
               {orders.map((order) => (
-                <div key={order.id} className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-center gap-8 group hover:border-[#5844FF]/30 transition-all">
-                  <div className="flex items-center gap-6">
-                    <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center font-black text-[#5844FF] text-2xl group-hover:scale-110 transition-transform">
+                <div key={order.id} className="bg-white p-6 md:p-10 rounded-[30px] md:rounded-[40px] border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-center gap-8 group hover:border-[#5844FF]/30 transition-all">
+                  <div className="flex items-center gap-6 w-full md:w-auto">
+                    <div className="w-16 h-16 md:w-20 md:h-20 bg-slate-50 rounded-2xl md:rounded-3xl flex items-center justify-center font-black text-[#5844FF] text-xl md:text-2xl group-hover:scale-110 transition-transform flex-shrink-0">
                       {order.id.slice(0, 2)}
                     </div>
                     <div>
-                      <h4 className="text-lg font-black text-slate-900">Order #{order.id}</h4>
-                      <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{new Date(order.timestamp).toLocaleDateString()}</p>
+                      <h4 className="text-base md:text-lg font-black text-slate-900">Order #{order.id}</h4>
+                      <p className="text-[10px] md:text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{new Date(order.timestamp).toLocaleDateString()}</p>
                     </div>
                   </div>
-                  <div className="flex flex-col items-center md:items-end gap-3">
-                    <span className="text-3xl font-black text-slate-900 tracking-tighter">TK{order.totalPrice.toLocaleString()}</span>
+                  <div className="flex flex-row md:flex-col items-center md:items-end gap-3 w-full md:w-auto justify-between md:justify-start">
+                    <span className="text-2xl md:text-3xl font-black text-slate-900 tracking-tighter">TK{order.totalPrice.toLocaleString()}</span>
                     <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${order.orderStatus === 'Delivered' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
                       {order.orderStatus}
                     </span>

@@ -1,12 +1,12 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { Product, Order, User, StoreSettings, CourierSettings, PixelSettings, Category, TwoFactorSettings } from '../types';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Product, Order, User, StoreSettings, CourierSettings, PixelSettings, Category } from '../types';
 import { CourierService } from '../CourierService';
 import { PixelService } from '../PixelService';
 import { api } from '../BackendAPI';
-import 'chart.js/auto';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { ChartData, ChartOptions } from 'chart.js';
+import 'chart.js/auto';
 
 interface AdminPanelProps {
   products: Product[];
@@ -24,7 +24,7 @@ interface AdminPanelProps {
   onUpdateSettings: (s: StoreSettings) => void;
   onUpdateCourierSettings?: (s: CourierSettings) => void;
   onUpdatePixelSettings?: (s: PixelSettings) => void;
-  onAddCategory: (cat: string) => void;
+  onAddCategory: (cat: Partial<Category>) => void;
   onDeleteCategory: (id: string) => void;
   onUpdateCategory?: (cat: Category) => void;
   onLogout: () => void;
@@ -79,6 +79,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     images: [], category: '', colors: [], sizes: [], stock: 100
   });
 
+  // Category Management States
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [categoryFormData, setCategoryFormData] = useState<Partial<Category>>({ name: '', isActive: true });
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+
   // Courier Setup States
   const [activeCourierConfig, setActiveCourierConfig] = useState<'pathao' | 'steadfast'>('pathao');
   const [isVerifyingCourier, setIsVerifyingCourier] = useState<string | null>(null);
@@ -94,16 +99,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   useEffect(() => {
-    // Initial fetch
     refreshDashboard();
     setLocalOrders(orders);
     setLocalProducts(products);
 
-    // Subscribe to BackendAPI events (which listens to Supabase)
     const unsubscribe = api.subscribe((dataType, data) => {
       if (dataType === 'orders') {
         setLocalOrders([...data]);
-        refreshDashboard(); // Re-calc metrics
+        refreshDashboard();
         setToast({ message: 'New Order Received! Dashboard Updated.', type: 'success' });
       } else if (dataType === 'products') {
         setLocalProducts([...data]);
@@ -121,7 +124,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       unsubscribe();
       clearInterval(interval);
     };
-  }, []); // Only on mount
+  }, []);
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   // --- Search Logic ---
 
@@ -369,7 +379,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     </div>
   );
 
-  // --- Header with Search & Notifications ---
   const renderHeader = () => (
     <header className="h-20 bg-white border-b border-gray-100 flex items-center justify-between px-10 sticky top-0 z-40">
       <div className="flex items-center gap-4 flex-grow max-w-2xl">
@@ -474,9 +483,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     </header>
   );
 
-  // --- Helper Functions to keep render clean ---
-  // ... (Previous dispatch functions remain unchanged)
-  
   const openDispatchModal = (order: Order) => {
     setCourierTarget(order);
     setDispatchFormData({
@@ -533,10 +539,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  const handleSendOrderToCourier = async (order: Order, courier: 'Pathao' | 'SteadFast') => {
-      openDispatchModal(order);
-  };
-
   const handleVerifyCourierConnection = async (type: 'Pathao' | 'SteadFast') => {
     setIsVerifyingCourier(type);
     try {
@@ -565,6 +567,35 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     }, 1500);
   };
 
+  // --- Category Modal Logic ---
+  const openAddCategoryModal = () => {
+    setCategoryFormData({ name: '', isActive: true });
+    setEditingCategory(null);
+    setShowCategoryModal(true);
+  };
+
+  const openEditCategoryModal = (cat: Category) => {
+    setCategoryFormData({ ...cat });
+    setEditingCategory(cat);
+    setShowCategoryModal(true);
+  };
+
+  const handleSaveCategory = () => {
+    if (!categoryFormData.name) {
+      setToast({ message: 'Category name is required', type: 'error' });
+      return;
+    }
+
+    if (editingCategory && onUpdateCategory) {
+      onUpdateCategory({ ...editingCategory, ...categoryFormData } as Category);
+      setToast({ message: 'Category updated successfully', type: 'success' });
+    } else {
+      onAddCategory(categoryFormData);
+      setToast({ message: 'Category added successfully', type: 'success' });
+    }
+    setShowCategoryModal(false);
+  };
+
   // --- Product Modal Logic ---
 
   const openAddProductModal = () => {
@@ -590,12 +621,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       const reader = new FileReader();
       reader.onloadend = () => {
         const result = reader.result as string;
-        // Append to images list to support unlimited photos
         setNewProductData(prev => ({
             ...prev,
             images: [...(prev.images || []), result]
         }));
-        setNewImageUrl(result); // Update input preview
+        setNewImageUrl(result);
       };
       reader.readAsDataURL(file);
     }
@@ -609,12 +639,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handleSaveProduct = () => {
-    // Collect all images: existing list + potential new URL in input if not already in list
     let finalImages = [...(newProductData.images || [])];
     if (newImageUrl && !finalImages.includes(newImageUrl)) {
         finalImages.push(newImageUrl);
     }
-    // Fallback if empty
     if (finalImages.length === 0) finalImages = ['https://via.placeholder.com/300'];
 
     const productToSave: Product = {
@@ -625,7 +653,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       purchaseCost: Number(newProductData.purchaseCost) || 0,
       internalPrice: Number(newProductData.internalPrice) || Number(newProductData.price) || 0,
       description: newProductData.description || '',
-      images: finalImages, // Use the accumulated list
+      images: finalImages,
       category: newProductData.category || 'Uncategorized',
       stock: Number(newProductData.stock) || 0,
       rating: editingProduct?.rating || 4.5,
@@ -650,11 +678,97 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setEditingProduct(null);
   };
   
-  // ... (renderOrders, renderProductOptions remain mostly unchanged)
-  
+  const renderCategories = () => (
+    <div className="bg-white p-10 rounded-3xl border border-gray-100 shadow-sm animate-fadeIn">
+      <div className="flex justify-between items-center mb-10">
+        <div>
+          <h3 className="text-2xl font-black text-[#111827]">Categories</h3>
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Manage product categories</p>
+        </div>
+        <button 
+          onClick={openAddCategoryModal}
+          className="bg-indigo-600 text-white pl-4 pr-6 py-3 rounded-2xl font-bold text-xs uppercase tracking-widest shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" /></svg>
+          Add Category
+        </button>
+      </div>
+      <div className="overflow-x-auto no-scrollbar">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="text-gray-400 text-[10px] font-black uppercase tracking-widest border-b border-gray-50">
+              <th className="pb-6">ID</th>
+              <th className="pb-6">NAME</th>
+              <th className="pb-6">STATUS</th>
+              <th className="pb-6 text-right">ACTIONS</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {categories.map(cat => (
+              <tr key={cat.id} className="group hover:bg-gray-50/50 transition-colors">
+                <td className="py-6 font-mono text-xs text-gray-500">#{cat.id.substring(0,6)}</td>
+                <td className="py-6 font-bold text-gray-900">{cat.name}</td>
+                <td className="py-6">
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${cat.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-400'}`}>
+                    {cat.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                </td>
+                <td className="py-6 text-right">
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => openEditCategoryModal(cat)} className="text-indigo-600 font-bold text-xs uppercase hover:underline">Edit</button>
+                    <button onClick={() => onDeleteCategory(cat.id)} className="text-red-500 font-bold text-xs uppercase hover:underline ml-4">Delete</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  const renderCategoryModal = () => {
+    if (!showCategoryModal) return null;
+    return (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[700] flex items-center justify-center p-6 animate-fadeIn">
+        <div className="bg-white rounded-[32px] w-full max-w-md p-8 shadow-2xl overflow-hidden">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-2xl font-black text-gray-900">{editingCategory ? 'Edit Category' : 'New Category'}</h3>
+            <button onClick={() => setShowCategoryModal(false)} className="text-gray-400 hover:text-red-500 transition-colors">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Category Name</label>
+              <input 
+                value={categoryFormData.name} 
+                onChange={e => setCategoryFormData({...categoryFormData, name: e.target.value})} 
+                className="w-full px-5 py-4 bg-gray-50 rounded-2xl border-none outline-none font-bold focus:ring-2 focus:ring-indigo-100"
+                placeholder="e.g. Footwear" 
+              />
+            </div>
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
+              <span className="text-sm font-bold text-gray-700">Active Status</span>
+              <button 
+                onClick={() => setCategoryFormData({...categoryFormData, isActive: !categoryFormData.isActive})}
+                className={`w-12 h-7 rounded-full p-1 transition-colors ${categoryFormData.isActive ? 'bg-emerald-500' : 'bg-gray-300'}`}
+              >
+                <div className={`w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${categoryFormData.isActive ? 'translate-x-5' : 'translate-x-0'}`} />
+              </button>
+            </div>
+          </div>
+          <div className="pt-8 mt-4 border-t border-gray-50 flex gap-4">
+            <button onClick={() => setShowCategoryModal(false)} className="flex-1 py-4 rounded-xl font-bold text-gray-400 hover:bg-gray-50 transition-colors">Cancel</button>
+            <button onClick={handleSaveCategory} className="flex-[2] bg-indigo-600 text-white py-4 rounded-xl font-black uppercase tracking-widest shadow-xl hover:bg-indigo-700 active:scale-95 transition-all">Save</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderOrders = () => (
     <div className="bg-white p-10 rounded-3xl border border-gray-100 shadow-sm animate-fadeIn">
-      {/* ... (Orders Table Code same as before) ... */}
       <div className="flex justify-between items-center mb-10">
         <div><h3 className="text-2xl font-black text-[#111827]">Customer Orders</h3></div>
       </div>
@@ -813,7 +927,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                  </div>
               </div>
 
-              {/* Gallery View - Unlimited Photos */}
               {newProductData.images && newProductData.images.length > 0 && (
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Gallery ({newProductData.images.length})</label>
@@ -836,7 +949,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Image Source</label>
                 
-                {/* URL Input */}
                 <div className="flex gap-2 mb-2">
                   <input 
                     value={newImageUrl}
@@ -847,7 +959,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   {newImageUrl && <img src={newImageUrl} className="w-14 h-14 rounded-xl object-cover border border-gray-200 bg-white" alt="Preview" />}
                 </div>
 
-                {/* File Input - Styled like screenshot */}
                 <div className="relative">
                   <input
                     type="file"
@@ -892,21 +1003,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     );
   };
 
-  // ... (renderDispatchModal, renderCourierSetup, renderCourierDispatch, renderPixelSetup remain unchanged)
-  
-  // Re-including these helper functions to ensure file integrity in response
   const renderDispatchModal = () => {
     if (!showDispatchModal) return null;
     return (
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[700] flex items-center justify-center p-6 animate-fadeIn">
         <div className="bg-white rounded-[32px] w-full max-w-lg p-8 shadow-2xl overflow-hidden">
-          {/* Dispatch Modal Content - same as previous implementation */}
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-2xl font-black text-gray-900">Dispatch Order</h3>
             <button onClick={() => setShowDispatchModal(false)} className="text-gray-400 hover:text-red-500 transition-colors"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg></button>
           </div>
           <div className="space-y-5 max-h-[70vh] overflow-y-auto pr-2 no-scrollbar">
-             {/* Dispatch Fields */}
              <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Select Courier</label><div className="flex gap-3">{(['Pathao', 'SteadFast'] as const).map(c => (<button key={c} onClick={() => setDispatchFormData({...dispatchFormData, courier: c})} className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all border-2 ${dispatchFormData.courier === c ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-100 bg-white text-gray-400 hover:border-gray-200'}`}>{c}</button>))}</div></div>
              <div className="grid grid-cols-2 gap-4"><div className="space-y-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Recipient Name</label><input value={dispatchFormData.recipientName} onChange={e => setDispatchFormData({...dispatchFormData, recipientName: e.target.value})} className="w-full px-4 py-3 bg-gray-50 rounded-xl font-bold text-sm border-none outline-none focus:ring-2 focus:ring-indigo-100" /></div><div className="space-y-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Phone</label><input value={dispatchFormData.phone} onChange={e => setDispatchFormData({...dispatchFormData, phone: e.target.value})} className="w-full px-4 py-3 bg-gray-50 rounded-xl font-bold text-sm border-none outline-none focus:ring-2 focus:ring-indigo-100" /></div></div>
              <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Delivery Address</label><textarea rows={3} value={dispatchFormData.address} onChange={e => setDispatchFormData({...dispatchFormData, address: e.target.value})} className="w-full px-4 py-3 bg-gray-50 rounded-xl font-bold text-sm border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none" /></div>
@@ -919,23 +1025,88 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     );
   };
 
+  const renderCourierDispatch = () => {
+    const readyOrders = localOrders.filter(o => !o.courierTrackingId && o.orderStatus !== 'Cancelled' && o.orderStatus !== 'Delivered');
+
+    return (
+      <div className="bg-white p-10 rounded-3xl border border-gray-100 shadow-sm animate-fadeIn">
+        <div className="flex justify-between items-center mb-10">
+          <div>
+             <h3 className="text-2xl font-black text-[#111827]">Dispatch Center</h3>
+             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Pending shipments</p>
+          </div>
+          <div className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl font-bold text-xs">
+            {readyOrders.length} Pending
+          </div>
+        </div>
+        
+        {readyOrders.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>
+            </div>
+            <p className="font-bold">All orders have been dispatched!</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto no-scrollbar">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="text-gray-400 text-[10px] font-black uppercase tracking-widest border-b border-gray-50">
+                  <th className="pb-6">ORDER INFO</th>
+                  <th className="pb-6">DESTINATION</th>
+                  <th className="pb-6">PAYMENT</th>
+                  <th className="pb-6 text-right">ACTION</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {readyOrders.map(order => (
+                  <tr key={order.id} className="group hover:bg-gray-50/50 transition-colors">
+                    <td className="py-6">
+                      <div className="font-black text-gray-900">#{order.id}</div>
+                      <div className="text-[10px] text-gray-400 font-bold">{new Date(order.timestamp).toLocaleDateString()}</div>
+                    </td>
+                    <td className="py-6">
+                      <div className="font-bold text-gray-900">{order.customerName}</div>
+                      <div className="text-[10px] text-gray-400 max-w-[200px] truncate">{order.customerAddress}</div>
+                    </td>
+                    <td className="py-6">
+                      <div className="font-black text-indigo-600">TK {order.totalPrice.toLocaleString()}</div>
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${order.paymentStatus === 'Paid' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                        {order.paymentStatus}
+                      </span>
+                    </td>
+                    <td className="py-6 text-right">
+                       <button 
+                         onClick={() => openDispatchModal(order)} 
+                         className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-indigo-700 shadow-lg transition-all active:scale-95"
+                       >
+                         Create Shipment
+                       </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderCourierSetup = () => {
     const isPathao = activeCourierConfig === 'pathao';
     const settings = isPathao ? courierSettings?.pathao : courierSettings?.steadfast;
-    // ... Same setup rendering logic ...
+    
     return (
       <div className="max-w-4xl space-y-10 animate-fadeIn">
         <div className="bg-white p-10 rounded-3xl border border-gray-100 shadow-sm">
-          {/* Header */}
           <div className="flex items-center justify-between mb-10"><h3 className="text-2xl font-black">Courier Integration Setup</h3><div className="flex gap-2 bg-gray-50 p-1 rounded-xl">{(['pathao', 'steadfast'] as const).map(type => (<button key={type} onClick={() => setActiveCourierConfig(type)} className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeCourierConfig === type ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}>{type}</button>))}</div></div>
-          {/* Fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-3"><label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Environment Mode</label><select value={settings?.mode || 'Live'} onChange={e => { const newVal = e.target.value as any; if (isPathao) onUpdateCourierSettings?.({...courierSettings!, pathao: {...courierSettings!.pathao, mode: newVal}}); else onUpdateCourierSettings?.({...courierSettings!, steadfast: {...courierSettings!.steadfast, mode: newVal}}); }} className="w-full px-6 py-4.5 bg-gray-50 rounded-2xl border-none outline-none font-bold focus:ring-2 focus:ring-indigo-100 appearance-none"><option value="Live">Production</option><option value="Sandbox">Sandbox</option></select></div>
             <div className="space-y-3"><label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Status</label><button onClick={() => { const newVal = !settings?.enabled; if (isPathao) onUpdateCourierSettings?.({...courierSettings!, pathao: {...courierSettings!.pathao, enabled: newVal}}); else onUpdateCourierSettings?.({...courierSettings!, steadfast: {...courierSettings!.steadfast, enabled: newVal}}); }} className={`w-full px-6 py-4.5 rounded-2xl font-bold border transition-all flex items-center justify-between ${settings?.enabled ? 'bg-emerald-50 border-emerald-100 text-emerald-600' : 'bg-gray-50 border-transparent text-gray-400'}`}><span>{settings?.enabled ? 'Active' : 'Disabled'}</span><div className={`w-10 h-6 rounded-full relative transition-colors ${settings?.enabled ? 'bg-emerald-500' : 'bg-gray-300'}`}><div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${settings?.enabled ? 'left-5' : 'left-1'}`} /></div></button></div>
             <div className="space-y-3 md:col-span-2"><label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">API Base URL</label><input value={settings?.baseUrl || ''} onChange={e => { const newVal = e.target.value; if (isPathao) onUpdateCourierSettings?.({...courierSettings!, pathao: {...courierSettings!.pathao, baseUrl: newVal}}); else onUpdateCourierSettings?.({...courierSettings!, steadfast: {...courierSettings!.steadfast, baseUrl: newVal}}); }} className="w-full px-6 py-4.5 bg-gray-50 rounded-2xl border-none outline-none font-bold focus:ring-2 focus:ring-indigo-100" /></div>
             {isPathao ? (<><div className="space-y-3"><label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Client ID</label><input value={courierSettings?.pathao.clientId} onChange={e => onUpdateCourierSettings?.({...courierSettings!, pathao: {...courierSettings!.pathao, clientId: e.target.value}})} className="w-full px-6 py-4.5 bg-gray-50 rounded-2xl border-none outline-none font-bold" /></div><div className="space-y-3"><label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Client Secret</label><input type="password" value={courierSettings?.pathao.clientSecret} onChange={e => onUpdateCourierSettings?.({...courierSettings!, pathao: {...courierSettings!.pathao, clientSecret: e.target.value}})} className="w-full px-6 py-4.5 bg-gray-50 rounded-2xl border-none outline-none font-bold" /></div><div className="space-y-3"><label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Username</label><input value={courierSettings?.pathao.username} onChange={e => onUpdateCourierSettings?.({...courierSettings!, pathao: {...courierSettings!.pathao, username: e.target.value}})} className="w-full px-6 py-4.5 bg-gray-50 rounded-2xl border-none outline-none font-bold" /></div><div className="space-y-3"><label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Password</label><input type="password" value={courierSettings?.pathao.password} onChange={e => onUpdateCourierSettings?.({...courierSettings!, pathao: {...courierSettings!.pathao, password: e.target.value}})} className="w-full px-6 py-4.5 bg-gray-50 rounded-2xl border-none outline-none font-bold" /></div><div className="space-y-3 md:col-span-2"><label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Store ID</label><input value={courierSettings?.pathao.storeId} onChange={e => onUpdateCourierSettings?.({...courierSettings!, pathao: {...courierSettings!.pathao, storeId: e.target.value}})} className="w-full px-6 py-4.5 bg-gray-50 rounded-2xl border-none outline-none font-bold" /></div></>) : (<><div className="space-y-3 md:col-span-2"><label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">API Key</label><input value={courierSettings?.steadfast.apiKey} onChange={e => onUpdateCourierSettings?.({...courierSettings!, steadfast: {...courierSettings!.steadfast, apiKey: e.target.value}})} className="w-full px-6 py-4.5 bg-gray-50 rounded-2xl border-none outline-none font-bold" /></div><div className="space-y-3 md:col-span-2"><label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Secret Key</label><input type="password" value={courierSettings?.steadfast.secretKey} onChange={e => onUpdateCourierSettings?.({...courierSettings!, steadfast: {...courierSettings!.steadfast, secretKey: e.target.value}})} className="w-full px-6 py-4.5 bg-gray-50 rounded-2xl border-none outline-none font-bold" /></div></>)}
           </div>
-          {/* Actions */}
           <div className="flex gap-4 mt-10">
             <button onClick={() => handleVerifyCourierConnection(activeCourierConfig === 'pathao' ? 'Pathao' : 'SteadFast')} disabled={isVerifyingCourier !== null} className="px-8 bg-indigo-50 text-indigo-600 py-5 rounded-[24px] font-black text-sm uppercase tracking-widest hover:bg-indigo-100 transition-all">{isVerifyingCourier ? 'Testing...' : 'Test Connection'}</button>
             <button className="flex-grow bg-indigo-600 text-white py-5 rounded-[24px] font-black text-lg shadow-xl hover:bg-indigo-700 transition-all">Save Configuration</button>
@@ -945,16 +1116,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     );
   };
 
-  const renderCourierDispatch = () => (
-    <div className="bg-white p-10 rounded-3xl border border-gray-100 shadow-sm animate-fadeIn">
-      {/* ... (Existing Dispatch Table Code) ... */}
-      <div className="flex justify-between items-center mb-10"><div><h3 className="text-2xl font-black text-[#111827]">Dispatch Center</h3><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Manage shipments & tracking</p></div></div>
-      <div className="overflow-x-auto no-scrollbar"><table className="w-full text-left"><thead><tr className="text-gray-400 text-[10px] font-black uppercase tracking-widest border-b border-gray-50"><th className="pb-6">ORDER ID</th><th className="pb-6">COURIER</th><th className="pb-6">TRACKING ID</th><th className="pb-6">STATUS</th><th className="pb-6 text-right">ACTION</th></tr></thead><tbody className="divide-y divide-gray-50">{localOrders.map(order => (<tr key={order.id} className="group hover:bg-gray-50/50 transition-colors"><td className="py-6 font-bold text-gray-900">#{order.id}</td><td className="py-6">{order.courierName ? (<span className={`px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${order.courierName === 'Pathao' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>{order.courierName}</span>) : <span className="text-gray-400 text-xs italic">Not assigned</span>}</td><td className="py-6 font-mono text-xs text-gray-600">{order.courierTrackingId || '-'}</td><td className="py-6"><span className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest ${order.orderStatus === 'Shipped' ? 'bg-indigo-50 text-indigo-600' : order.orderStatus === 'Delivered' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>{order.orderStatus}</span></td><td className="py-6 text-right">{!order.courierTrackingId ? (<button onClick={() => openDispatchModal(order)} className="text-indigo-600 font-bold text-xs hover:underline uppercase tracking-wider">Create Shipment</button>) : (<button className="text-gray-400 font-bold text-xs hover:text-gray-600 uppercase tracking-wider">Track Status</button>)}</td></tr>))}</tbody></table></div>
-    </div>
-  );
-
   const renderPixelSetup = () => {
-    // ... (Existing Pixel Setup Code) ...
     const settings = pixelSettings || { pixelId: '', appId: '', accessToken: '', testEventCode: '', currency: 'BDT', status: 'Inactive' };
     const updateSetting = (key: keyof PixelSettings, val: any) => { if (onUpdatePixelSettings) onUpdatePixelSettings({ ...settings, [key]: val }); };
     return (
@@ -981,6 +1143,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           {[
             { id: 'dashboard', label: 'Overview', icon: '📊' },
             { id: 'products', label: 'Inventory', icon: '📦' },
+            { id: 'categories', label: 'Categories', icon: '🗂️' },
             { id: 'orders', label: 'Sales Management', icon: '🛍️' },
             { id: 'dispatch', label: 'Dispatch Center', icon: '🚚' },
             { id: 'courier_setup', label: 'Courier Setup', icon: '🔌' },
@@ -999,6 +1162,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="flex-grow overflow-y-auto p-10 no-scrollbar">
           {activeTab === 'dashboard' && renderDashboard()}
           {activeTab === 'products' && renderProductOptions()}
+          {activeTab === 'categories' && renderCategories()}
           {activeTab === 'orders' && renderOrders()}
           {activeTab === 'dispatch' && renderCourierDispatch()}
           {activeTab === 'courier_setup' && renderCourierSetup()}
@@ -1012,19 +1176,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       )}
       
-      {/* Dispatch Modal */}
       {renderDispatchModal()}
-
-      {/* Product Modal */}
       {renderProductModal()}
+      {renderCategoryModal()}
       
-      {/* Order Details Modal (reused from previous code) */}
       {viewingOrder && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[600] flex items-center justify-center p-6 animate-fadeIn">
           <div className="bg-white rounded-[40px] w-full max-w-2xl p-10 shadow-2xl relative overflow-hidden">
             <button onClick={() => setViewingOrder(null)} className="absolute top-8 right-8 text-gray-400 hover:text-gray-900 transition-colors"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg></button>
             <div className="mb-10"><h2 className="text-3xl font-black text-gray-900 tracking-tight mb-2">Order Information</h2><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">INVOICE #{viewingOrder.id}</p></div>
-            {/* ... rest of modal content ... */}
              <div className="grid grid-cols-2 gap-8 mb-10">
                 <div><p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-2">Customer</p><h4 className="font-bold text-gray-900">{viewingOrder.customerName}</h4><p className="text-sm text-gray-500">{viewingOrder.customerPhone}</p></div>
                 <div><p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest mb-2">Shipping Point</p><p className="text-sm text-gray-900 leading-relaxed">{viewingOrder.customerAddress}, {viewingOrder.customerLocation}</p></div>

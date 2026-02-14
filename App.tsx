@@ -266,7 +266,7 @@ const App: React.FC = () => {
               onUpdateSettings={setStoreSettings}
               onUpdateCourierSettings={handleUpdateCourierSettings}
               onUpdatePixelSettings={handleUpdatePixelSettings}
-              onAddCategory={(catName) => setCategories([...categories, { id: Math.random().toString(36).substr(2, 9), name: catName, isActive: true }])}
+              onAddCategory={(cat) => setCategories([...categories, { id: Math.random().toString(36).substr(2, 9), name: cat.name || 'New Category', isActive: cat.isActive ?? true }])}
               onDeleteCategory={(catId) => setCategories(categories.filter(c => c.id !== catId))}
               onUpdateCategory={(updatedCat) => setCategories(categories.map(c => c.id === updatedCat.id ? updatedCat : c))}
               onLogout={handleAdminLogout}
