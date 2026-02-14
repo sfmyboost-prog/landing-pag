@@ -83,8 +83,8 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({
           </div>
 
           <div className="flex items-center gap-4 mb-8">
-            <span className="text-2xl text-gray-400 line-through font-medium">${product.originalPrice.toFixed(2)}</span>
-            <span className="text-4xl font-extrabold text-indigo-600">${product.price.toFixed(2)}</span>
+            <span className="text-2xl text-gray-400 line-through font-medium">TK{product.originalPrice.toLocaleString()}</span>
+            <span className="text-4xl font-extrabold text-indigo-600">TK{product.price.toLocaleString()}</span>
           </div>
 
           <div className="space-y-6 mb-10">

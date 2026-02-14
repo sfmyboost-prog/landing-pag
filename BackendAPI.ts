@@ -1,5 +1,5 @@
 
-import { Product, Order, User, Category, StoreSettings, CourierSettings, PixelSettings } from './types';
+import { Product, Order, User, Category, StoreSettings, CourierSettings, PixelSettings, TwoFactorSettings } from './types';
 import { INITIAL_PRODUCTS } from './constants';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
@@ -17,6 +17,7 @@ interface DB {
   storeSettings: StoreSettings;
   courierSettings: CourierSettings;
   pixelSettings: PixelSettings;
+  twoFactorSettings: TwoFactorSettings;
   notifications: any[];
 }
 
@@ -36,13 +37,17 @@ const DEFAULT_DB: DB = {
   storeSettings: {
     storeName: 'Amar Bazari',
     logoUrl: 'A',
-    currency: 'USD',
-    taxPercentage: 10,
+    currency: 'BDT',
+    taxPercentage: 0,
     shippingFee: 0
   },
   courierSettings: {
     pathao: { clientId: '', clientSecret: '', storeId: '', username: '', password: '' },
-    steadfast: { apiKey: '', secretKey: '', merchantId: '' }
+    steadfast: { 
+      apiKey: 'vs85kwjkj45wlwz4ffwygt44hhwjsb4p', 
+      secretKey: '9tlar1jybm0rf7fbtpyncd6t', 
+      merchantId: '1901313' 
+    }
   },
   pixelSettings: {
     pixelId: '',
@@ -50,6 +55,10 @@ const DEFAULT_DB: DB = {
     accessToken: '',
     testEventCode: '',
     status: 'Inactive'
+  },
+  twoFactorSettings: {
+    enabled: false,
+    secret: 'JBSWY3DPEHPK3PXP' // Default placeholder secret (base32)
   },
   notifications: []
 };
@@ -67,6 +76,12 @@ class BackendAPI {
 
   private save() {
     localStorage.setItem(DB_KEY, JSON.stringify(this.db));
+  }
+
+  async clearSystemData(): Promise<void> {
+    this.db.orders = [];
+    this.db.notifications = [];
+    this.save();
   }
 
   async getProducts(): Promise<Product[]> {
@@ -93,29 +108,39 @@ class BackendAPI {
         .select('*')
         .order('date_time', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '401' || error.message.includes('API key')) {
+          console.error('Supabase Auth Error: Invalid API Key. Falling back to local storage.');
+        } else {
+          throw error;
+        }
+      }
       
-      const mappedOrders: Order[] = (data || []).map(row => ({
-        id: row.id,
-        customerName: row.customer_name,
-        customerEmail: row.email,
-        customerPhone: row.phone,
-        customerAddress: row.street_address,
-        customerLocation: row.location,
-        customerZipCode: row.zip_code,
-        customerCourierPreference: row.courier_preference,
-        items: row.items,
-        totalPrice: row.total_amount,
-        paymentStatus: row.payment_status,
-        orderStatus: row.order_status,
-        timestamp: new Date(row.date_time),
-        courierName: row.courier_name,
-        courierTrackingId: row.courier_tracking_id
-      }));
+      if (data) {
+        const mappedOrders: Order[] = data.map(row => ({
+          id: row.id,
+          customerName: row.customer_name,
+          customerEmail: row.email,
+          customerPhone: row.phone,
+          customerAddress: row.street_address,
+          customerLocation: row.location,
+          customerZipCode: row.zip_code,
+          customerCourierPreference: row.courier_preference,
+          items: row.items,
+          totalPrice: row.total_amount,
+          paymentStatus: row.payment_status,
+          orderStatus: row.order_status,
+          timestamp: new Date(row.date_time),
+          courierName: row.courier_name,
+          courierTrackingId: row.courier_tracking_id
+        }));
 
-      this.db.orders = mappedOrders;
-      this.save();
-      return mappedOrders;
+        this.db.orders = mappedOrders;
+        this.save();
+        return mappedOrders;
+      }
+      
+      return [...this.db.orders];
     } catch (err) {
       console.warn('Supabase fetch failed:', err);
       return [...this.db.orders];
@@ -123,6 +148,17 @@ class BackendAPI {
   }
 
   async createOrder(order: Order): Promise<Order> {
+    // Add to local immediately for responsiveness
+    this.db.orders.unshift(order);
+    this.db.notifications.unshift({
+      id: Date.now(),
+      title: 'New Order Received',
+      message: `Order #${order.id} placed by ${order.customerName}`,
+      timestamp: new Date(),
+      read: false
+    });
+    this.save();
+
     try {
       const { error } = await this.supabase
         .from('orders')
@@ -143,26 +179,20 @@ class BackendAPI {
         }]);
 
       if (error) throw error;
-
-      this.db.orders.unshift(order);
-      this.db.notifications.unshift({
-        id: Date.now(),
-        title: 'New Order Received',
-        message: `Order #${order.id} placed by ${order.customerName}`,
-        timestamp: new Date(),
-        read: false
-      });
-      this.save();
       return order;
     } catch (err) {
-      console.error('Failed to sync to Supabase:', err);
-      this.db.orders.unshift(order);
-      this.save();
+      console.error('Supabase Sync Failed (Order saved locally):', err);
       return order;
     }
   }
 
   async updateOrder(order: Order): Promise<Order> {
+    const idx = this.db.orders.findIndex(o => o.id === order.id);
+    if (idx > -1) {
+      this.db.orders[idx] = order;
+      this.save();
+    }
+
     try {
       const { error } = await this.supabase
         .from('orders')
@@ -175,15 +205,9 @@ class BackendAPI {
         .eq('id', order.id);
 
       if (error) throw error;
-
-      const idx = this.db.orders.findIndex(o => o.id === order.id);
-      if (idx > -1) {
-        this.db.orders[idx] = order;
-        this.save();
-      }
       return order;
     } catch (err) {
-      console.error('Update failed:', err);
+      console.error('Supabase Sync Failed (Update saved locally):', err);
       return order;
     }
   }
@@ -210,24 +234,61 @@ class BackendAPI {
     this.save();
   }
 
+  async getCourierSettings(): Promise<CourierSettings> {
+    return { ...this.db.courierSettings };
+  }
+
+  async saveCourierSettings(settings: CourierSettings): Promise<void> {
+    this.db.courierSettings = settings;
+    this.save();
+  }
+
+  async getPixelSettings(): Promise<PixelSettings> {
+    return { ...this.db.pixelSettings };
+  }
+
+  async savePixelSettings(settings: PixelSettings): Promise<void> {
+    this.db.pixelSettings = settings;
+    this.save();
+  }
+
+  async getTwoFactorSettings(): Promise<TwoFactorSettings> {
+    return { ...this.db.twoFactorSettings };
+  }
+
+  async saveTwoFactorSettings(settings: TwoFactorSettings): Promise<void> {
+    this.db.twoFactorSettings = settings;
+    this.save();
+  }
+
   async getDashboardMetrics(yearOffset: number = 0) {
-    const orders = await this.getOrders();
+    const orders = this.db.orders;
     const products = this.db.products;
     const users = this.db.users;
 
-    const totalEarnings = orders
-      .filter(o => o.paymentStatus === 'Paid')
+    const currentYear = new Date().getFullYear() + yearOffset;
+
+    const earningsCurrent = orders
+      .filter(o => o.paymentStatus === 'Paid' && new Date(o.timestamp).getFullYear() === currentYear)
       .reduce((acc, o) => acc + o.totalPrice, 0);
+
+    const totalProfit = orders
+      .filter(o => o.paymentStatus === 'Paid' && new Date(o.timestamp).getFullYear() === currentYear)
+      .reduce((acc, o) => {
+        const orderProfit = o.items.reduce((s, it) => {
+          return s + ((it.product.price - (it.product.purchaseCost || 0)) * it.quantity);
+        }, 0);
+        return acc + orderProfit;
+      }, 0);
 
     const activeCustomers = new Set(orders.map(o => o.customerEmail)).size || users.length;
     
     const monthlyRevenue = Array(12).fill(0);
     const monthlyOrders = Array(12).fill(0);
-    const targetYear = new Date().getFullYear() + yearOffset;
 
     orders.forEach(o => {
       const date = new Date(o.timestamp);
-      if (date.getFullYear() === targetYear) {
+      if (date.getFullYear() === currentYear) {
         const month = date.getMonth();
         monthlyRevenue[month] += o.totalPrice;
         monthlyOrders[month] += 1;
@@ -244,22 +305,17 @@ class BackendAPI {
       .sort((a, b) => b.count - a.count)
       .slice(0, 6);
 
-    const locationData = orders.reduce((acc: any, o) => {
-      const loc = o.customerLocation || 'Unknown';
-      acc[loc] = (acc[loc] || 0) + 1;
-      return acc;
-    }, {});
-
     return {
-      totalEarnings,
+      totalEarnings: earningsCurrent,
       totalOrders: orders.length,
       customers: activeCustomers,
-      balance: totalEarnings * 0.92,
+      totalProfit: totalProfit,
+      growth: 1.56,
       revenueSeries: monthlyRevenue,
       orderSeries: monthlyOrders,
       topSales,
-      locationData,
-      currentYear: targetYear
+      recentOrders: orders.slice(0, 10),
+      currentYear
     };
   }
 }

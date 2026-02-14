@@ -1,5 +1,7 @@
 
 import React, { useState } from 'react';
+import { api } from '../BackendAPI';
+import * as OTPAuth from 'otpauth';
 
 interface AdminLoginProps {
   onLoginSuccess: () => void;
@@ -9,13 +11,43 @@ interface AdminLoginProps {
 const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess, onBack }) => {
   const [email, setEmail] = useState('admin@dataflow.com');
   const [password, setPassword] = useState('');
+  const [authCode, setAuthCode] = useState('');
   const [error, setError] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password === 'admin123') {
-      onLoginSuccess();
+      const settings = await api.getTwoFactorSettings();
+      
+      if (settings.enabled) {
+        if (!authCode) {
+          setError('Authentication code is required.');
+          return;
+        }
+
+        const totp = new OTPAuth.TOTP({
+          issuer: 'Dataflow',
+          label: 'Admin',
+          algorithm: 'SHA1',
+          digits: 6,
+          period: 30,
+          secret: settings.secret,
+        });
+
+        const delta = totp.validate({
+          token: authCode,
+          window: 1,
+        });
+
+        if (delta !== null) {
+          onLoginSuccess();
+        } else {
+          setError('Invalid or expired authentication code.');
+        }
+      } else {
+        onLoginSuccess();
+      }
     } else {
       setError('Invalid administrator credentials. Try: admin123');
     }
@@ -61,6 +93,20 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess, onBack }) => {
                 autoFocus
               />
               <svg className="w-5 h-5 absolute right-5 top-1/2 -translate-y-1/2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Authentication Code</label>
+            <div className="relative">
+              <input 
+                type="text" 
+                value={authCode}
+                onChange={e => setAuthCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                placeholder="Enter 6-digit code"
+                className="w-full px-6 py-4.5 bg-[#F3F5F7] border border-transparent rounded-2xl focus:ring-2 focus:ring-[#FF7E3E] focus:ring-opacity-20 focus:bg-white focus:border-[#FF7E3E]/30 outline-none transition-all font-bold text-gray-900" 
+              />
+              <svg className="w-5 h-5 absolute right-5 top-1/2 -translate-y-1/2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
             </div>
             {error && <div className="text-red-500 text-xs font-bold px-2 flex items-center gap-1.5 animate-pulse"><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>{error}</div>}
           </div>

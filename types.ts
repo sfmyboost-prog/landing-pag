@@ -62,6 +62,11 @@ export interface PixelSettings {
   status: 'Inactive' | 'Connecting' | 'Active';
 }
 
+export interface TwoFactorSettings {
+  enabled: boolean;
+  secret: string;
+}
+
 export interface Order {
   id: string;
   customerName: string;

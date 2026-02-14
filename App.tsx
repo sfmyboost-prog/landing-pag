@@ -21,8 +21,8 @@ const App: React.FC = () => {
   const [storeSettings, setStoreSettings] = useState<StoreSettings>({
     storeName: 'Amar Bazari',
     logoUrl: 'A',
-    currency: 'USD',
-    taxPercentage: 10,
+    currency: 'BDT',
+    taxPercentage: 0,
     shippingFee: 0
   });
 
@@ -46,21 +46,25 @@ const App: React.FC = () => {
   // Initial Data Fetch
   useEffect(() => {
     const fetchData = async () => {
-      const [p, c, o, u] = await Promise.all([
+      const [p, c, o, u, cs, ps] = await Promise.all([
         api.getProducts(),
         Promise.resolve([
           { id: '1', name: 'Apparel', isActive: true },
           { id: '2', name: 'Footwear', isActive: true },
           { id: '3', name: 'Accessories', isActive: true },
           { id: '4', name: 'Bags', isActive: true }
-        ]), // Logic for categories
+        ]),
         api.getOrders(),
-        api.getUsers()
+        api.getUsers(),
+        api.getCourierSettings(),
+        api.getPixelSettings()
       ]);
       setProducts(p);
       setCategories(c);
       setOrders(o);
       setUsers(u);
+      setCourierSettings(cs);
+      setPixelSettings(ps);
     };
     fetchData();
   }, [view]);
@@ -100,11 +104,53 @@ const App: React.FC = () => {
 
   const clearCart = () => setCart([]);
 
+  /**
+   * Triggers Facebook Conversions API (CAPI) for Purchase event
+   */
+  const trackPixelPurchase = async (order: Order) => {
+    if (!pixelSettings.pixelId || !pixelSettings.accessToken || pixelSettings.status !== 'Active') return;
+    
+    try {
+      const payload = {
+        data: [{
+          event_name: 'Purchase',
+          event_time: Math.floor(Date.now() / 1000),
+          action_source: 'website',
+          user_data: {
+            em: [order.customerEmail], // Hash in production
+            ph: [order.customerPhone], // Hash in production
+          },
+          custom_data: {
+            currency: 'BDT',
+            value: order.totalPrice,
+            content_ids: order.items.map(it => it.product.id),
+            content_type: 'product'
+          },
+          test_event_code: pixelSettings.testEventCode || undefined
+        }]
+      };
+
+      await fetch(`https://graph.facebook.com/v18.0/${pixelSettings.pixelId}/events?access_token=${pixelSettings.accessToken}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } catch (e) {
+      console.error('CAPI Tracking Failed:', e);
+    }
+  };
+
   const placeOrder = async (details: { name: string; email: string; phone: string; address: string; location: string; zipCode: string; courier: 'Pathao' | 'SteadFast' | '' }) => {
     if (cart.length === 0) return;
     const totalPrice = cart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
+    
+    // Generate a unique Invoice ID: YYMMDD-RANDOM (Avoids courier 500 errors on duplicates)
+    const datePart = new Date().toISOString().slice(2, 10).replace(/-/g, '');
+    const randomPart = Math.floor(1000 + Math.random() * 9000);
+    const orderId = `${datePart}-${randomPart}`;
+
     const newOrder: Order = {
-      id: Math.floor(1000 + Math.random() * 9000).toString(),
+      id: orderId,
       customerName: details.name,
       customerEmail: details.email,
       customerPhone: details.phone,
@@ -118,8 +164,13 @@ const App: React.FC = () => {
       orderStatus: 'Pending',
       timestamp: new Date()
     };
+    
     await api.createOrder(newOrder);
     setOrders(prev => [newOrder, ...prev]);
+    
+    // Fire tracking event
+    trackPixelPurchase(newOrder);
+    
     clearCart();
   };
 
@@ -159,6 +210,16 @@ const App: React.FC = () => {
   const handleAdminLogout = () => {
     setIsAdminAuthenticated(false);
     setView('LANDING');
+  };
+
+  const handleUpdateCourierSettings = async (settings: CourierSettings) => {
+    await api.saveCourierSettings(settings);
+    setCourierSettings(settings);
+  };
+
+  const handleUpdatePixelSettings = async (settings: PixelSettings) => {
+    await api.savePixelSettings(settings);
+    setPixelSettings(settings);
   };
 
   return (
@@ -210,8 +271,8 @@ const App: React.FC = () => {
               onUpdateOrder={updateOrder}
               onUpdateUser={updateUser}
               onUpdateSettings={setStoreSettings}
-              onUpdateCourierSettings={setCourierSettings}
-              onUpdatePixelSettings={setPixelSettings}
+              onUpdateCourierSettings={handleUpdateCourierSettings}
+              onUpdatePixelSettings={handleUpdatePixelSettings}
               onAddCategory={(catName) => setCategories([...categories, { id: Math.random().toString(36).substr(2, 9), name: catName, isActive: true }])}
               onDeleteCategory={(catId) => setCategories(categories.filter(c => c.id !== catId))}
               onUpdateCategory={(updatedCat) => setCategories(categories.map(c => c.id === updatedCat.id ? updatedCat : c))}
@@ -240,7 +301,7 @@ const App: React.FC = () => {
           <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
               <h3 className="text-xl font-bold mb-4">Amar Bazari</h3>
-              <p className="text-gray-400 text-sm">Curated premium selections for the modern elite.</p>
+              <p className="text-gray-400 text-sm">Curated premium selections for the modern lifestyle in Bangladesh.</p>
             </div>
           </div>
         </footer>

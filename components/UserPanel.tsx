@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CartItem, Product, User, Order } from '../types';
 
 interface UserPanelProps {
@@ -38,7 +38,7 @@ const CheckoutProductVisual: React.FC<{ item: CartItem, onRemove: () => void }> 
           </div>
         </div>
         <div className="flex flex-col items-end">
-          <span className="text-3xl md:text-5xl font-black text-[#5844FF] tracking-tighter leading-none">${item.product.price.toFixed(2)}</span>
+          <span className="text-3xl md:text-5xl font-black text-[#5844FF] tracking-tighter leading-none">TK{item.product.price.toLocaleString()}</span>
           <button onClick={onRemove} className="mt-2 text-xs font-black text-gray-300 hover:text-red-500 uppercase tracking-widest transition-colors">Remove Item</button>
         </div>
       </div>
@@ -87,269 +87,204 @@ const UserPanel: React.FC<UserPanelProps> = ({
   onRemoveFromCart,
   onCloseSuccess 
 }) => {
-  const [activeTab, setActiveTab] = useState<'checkout' | 'orders'>('checkout');
-  const [details, setDetails] = useState({
+  const [formData, setFormData] = useState({
     name: '',
     email: '',
-    phone: '+880',
+    phone: '',
     address: '',
-    location: '',
+    location: 'Dhaka',
     zipCode: '',
     courier: '' as 'Pathao' | 'SteadFast' | ''
   });
-
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   
-  const total = cart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
+  const [errors, setErrors] = useState<Record<string, boolean>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
-  useEffect(() => {
-    if (cart.length === 0) {
-      setActiveTab('orders');
-    } else {
-      setActiveTab('checkout');
+  const total = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (cart.length === 0) return;
+
+    // Validation
+    const newErrors: Record<string, boolean> = {};
+    if (!formData.name.trim()) newErrors.name = true;
+    if (!formData.email.trim()) newErrors.email = true;
+    if (!formData.phone.trim()) newErrors.phone = true;
+    if (!formData.address.trim()) newErrors.address = true;
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      // Scroll to form if needed
+      return;
     }
-  }, [cart.length]);
 
-  const validateEmail = (email: string) => {
-    return String(email)
-      .toLowerCase()
-      .match(/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/);
-  };
-
-  const validatePhone = (phone: string) => {
-    const bdPhoneRegex = /^\+8801[3-9]\d{8}$/;
-    return bdPhoneRegex.test(phone.trim());
-  };
-
-  const handleSubmitOrder = async () => {
-    const newErrors: Record<string, string> = {};
-    if (!details.name.trim()) newErrors.name = 'Required';
-    if (!details.email.trim() || !validateEmail(details.email)) newErrors.email = 'Correct the email.';
-    if (details.phone === '+880' || !validatePhone(details.phone)) newErrors.phone = 'Correct the number.';
-    if (!details.location.trim()) newErrors.location = 'Required';
-    if (!details.zipCode.trim()) newErrors.zipCode = 'Required';
-    if (!details.address.trim()) newErrors.address = 'Required';
-    if (!details.courier) newErrors.courier = 'Please select a courier';
-
-    setErrors(newErrors);
-    if (Object.keys(newErrors).length > 0) return;
-
-    setIsPlacingOrder(true);
+    setErrors({});
+    setIsSubmitting(true);
     try {
-        await onPlaceOrder(details);
-        setActiveTab('orders');
-        onCloseSuccess();
+      const finalPhone = formData.phone.startsWith('+880') ? formData.phone : `+880${formData.phone}`;
+      await onPlaceOrder({ ...formData, phone: finalPhone });
+      setShowSuccess(true);
     } catch (err) {
-        alert("Something went wrong. Please try again.");
+      alert('Order failed. Please try again.');
     } finally {
-        setIsPlacingOrder(false);
+      setIsSubmitting(false);
     }
   };
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value;
-    if (val.startsWith('+880')) setDetails({...details, phone: val});
-    else if (val === '' || val.length < 4) setDetails({...details, phone: '+880'});
-    if(errors.phone) setErrors({...errors, phone: ''});
-  };
-
-  const getFieldClass = (fieldName: string) => {
-    const base = "w-full rounded-2xl px-6 py-5 text-sm font-bold outline-none transition-all border-2";
-    if (errors[fieldName]) {
-      return `${base} border-red-600 bg-red-50 text-red-900 placeholder-red-400 focus:ring-0`;
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (value.trim()) {
+      setErrors(prev => ({ ...prev, [field]: false }));
     }
-    return `${base} bg-white border-slate-200 focus:ring-4 focus:ring-indigo-100 focus:border-[#5844FF] text-slate-900`;
   };
 
-  const getLabelClass = (fieldName: string) => {
-    return `text-[11px] font-black uppercase tracking-widest ml-1 ${errors[fieldName] ? 'text-red-600' : 'text-slate-600'}`;
-  };
+  if (showSuccess) {
+    return (
+      <div className="max-w-xl mx-auto py-20 px-6 text-center animate-fadeIn">
+        <div className="w-24 h-24 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-8">
+          <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"/></svg>
+        </div>
+        <h2 className="text-4xl font-black text-gray-900 mb-4">Order Placed!</h2>
+        <p className="text-gray-500 text-lg mb-10 font-medium">Your premium selection is being prepared for dispatch. We will notify you once it's on the way.</p>
+        <button onClick={onCloseSuccess} className="w-full bg-gray-900 text-white py-5 rounded-2xl font-black text-lg shadow-xl">Continue Shopping</button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12 animate-fadeIn min-h-[70vh]">
-      <div className="flex border-b border-gray-100 mb-12 overflow-x-auto no-scrollbar gap-8">
-        <button 
-          onClick={() => cart.length > 0 && setActiveTab('checkout')}
-          className={`pb-4 text-sm font-black uppercase tracking-widest transition-all relative ${activeTab === 'checkout' ? 'text-[#5844FF]' : 'text-gray-400 hover:text-gray-600'} ${cart.length === 0 ? 'opacity-30 cursor-not-allowed' : ''}`}
-        >
-          Secure Checkout
-          {activeTab === 'checkout' && <div className="absolute bottom-0 left-0 w-full h-1 bg-[#5844FF] rounded-t-full" />}
-        </button>
-        <button 
-          onClick={() => setActiveTab('orders')}
-          className={`pb-4 text-sm font-black uppercase tracking-widest transition-all relative ${activeTab === 'orders' ? 'text-[#5844FF]' : 'text-gray-400 hover:text-gray-600'}`}
-        >
-          Dibba {orders.length > 0 && `(${orders.length})`}
-          {activeTab === 'orders' && <div className="absolute bottom-0 left-0 w-full h-1 bg-[#5844FF] rounded-t-full" />}
-        </button>
-      </div>
-
-      {activeTab === 'checkout' ? (
-        <div className="flex flex-col lg:flex-row gap-12">
+      {cart.length > 0 ? (
+        <div className="flex flex-col lg:flex-row gap-16">
           <div className="lg:w-2/3 space-y-12">
-            <section className="bg-white p-6 md:p-12 rounded-[40px] border border-gray-100 shadow-sm relative overflow-hidden">
-              <div className="space-y-20">
-                {cart.map((item, idx) => (
-                  <CheckoutProductVisual 
-                    key={idx} 
-                    item={item} 
-                    onRemove={() => onRemoveFromCart(idx)} 
+            {cart.map((item, idx) => (
+              <CheckoutProductVisual key={idx} item={item} onRemove={() => onRemoveFromCart(idx)} />
+            ))}
+            
+            {/* Delivery Information Section */}
+            <div className="bg-[#EAEFF5] p-8 md:p-14 rounded-[44px] shadow-sm transition-all">
+              <h3 className="text-2xl font-black text-gray-900 mb-10">Delivery Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                {/* Full Name */}
+                <div className="space-y-3">
+                  <label className={`text-[11px] font-black uppercase tracking-widest ml-1 ${errors.name ? 'text-red-500' : 'text-gray-400'}`}>
+                    FULL NAME
+                  </label>
+                  <input 
+                    value={formData.name} 
+                    onChange={e => handleInputChange('name', e.target.value)}
+                    className={`w-full px-6 py-5 bg-white rounded-2xl border-none outline-none font-bold shadow-sm transition-all focus:ring-2 ${errors.name ? 'ring-2 ring-red-500 text-red-600 placeholder:text-red-300' : 'focus:ring-indigo-100 text-gray-700'}`} 
+                    placeholder="Enter your full name"
                   />
-                ))}
-              </div>
-            </section>
+                  {errors.name && <p className="text-[10px] font-bold text-red-500 ml-1 uppercase">Field is required</p>}
+                </div>
 
-            <section id="delivery-section" className="bg-white p-12 rounded-[40px] border border-gray-100 shadow-sm space-y-10 animate-fadeIn">
-              <div className="pb-6 border-b border-gray-100">
-                <h3 className="text-2xl font-black text-slate-900 tracking-tight">Customer Delivery Details</h3>
-                <p className="text-slate-500 text-xs font-bold mt-1 uppercase tracking-widest">Verify information for secure dispatch</p>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-2">
-                   <label className={getLabelClass('name')}>Full Name</label>
-                   <input 
-                    type="text" 
-                    placeholder="e.g. Kristin Watson" 
-                    value={details.name} 
-                    onChange={e => {setDetails({...details, name: e.target.value}); if(errors.name) setErrors({...errors, name: ''});}} 
-                    className={getFieldClass('name')} 
-                   />
-                   {errors.name && <p className="text-[10px] font-black text-red-600 ml-1 uppercase">{errors.name}</p>}
-                </div>
-                <div className="space-y-2">
-                   <label className={getLabelClass('email')}>Email Address</label>
-                   <input 
-                    type="email" 
-                    placeholder="mail@example.com" 
-                    value={details.email} 
-                    onChange={e => {setDetails({...details, email: e.target.value}); if(errors.email) setErrors({...errors, email: ''});}} 
-                    className={getFieldClass('email')} 
-                   />
-                   {errors.email && <p className="text-[10px] font-black text-red-600 ml-1 uppercase">{errors.email}</p>}
-                </div>
-                <div className="space-y-2">
-                   <label className={getLabelClass('phone')}>Phone Number (BD)</label>
-                   <input 
-                    type="text" 
-                    value={details.phone} 
-                    onChange={handlePhoneChange} 
-                    className={getFieldClass('phone')} 
-                   />
-                   {errors.phone && <p className="text-[10px] font-black text-red-600 ml-1 uppercase">{errors.phone}</p>}
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                     <label className={getLabelClass('location')}>General Location</label>
-                     <input 
-                      type="text" 
-                      placeholder="City, Area" 
-                      value={details.location} 
-                      onChange={e => {setDetails({...details, location: e.target.value}); if(errors.location) setErrors({...errors, location: ''});}} 
-                      className={getFieldClass('location')} 
-                     />
-                     {errors.location && <p className="text-[10px] font-black text-red-600 ml-1 uppercase">{errors.location}</p>}
+                {/* Phone Number with Country Code */}
+                <div className="space-y-3">
+                  <label className={`text-[11px] font-black uppercase tracking-widest ml-1 ${errors.phone ? 'text-red-500' : 'text-gray-400'}`}>
+                    PHONE NUMBER
+                  </label>
+                  <div className={`flex items-center bg-white rounded-2xl shadow-sm transition-all focus-within:ring-2 ${errors.phone ? 'ring-2 ring-red-500' : 'focus-within:ring-indigo-100'}`}>
+                    <span className={`pl-6 py-5 font-bold border-r border-gray-100 pr-3 ${errors.phone ? 'text-red-500' : 'text-gray-400'}`}>+880</span>
+                    <input 
+                      type="tel"
+                      value={formData.phone} 
+                      onChange={e => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        handleInputChange('phone', val);
+                      }}
+                      className={`flex-grow px-4 py-5 bg-transparent border-none outline-none font-bold ${errors.phone ? 'text-red-600 placeholder:text-red-300' : 'text-gray-700'}`} 
+                      placeholder="17XXXXXXXX"
+                    />
                   </div>
-                  <div className="space-y-2">
-                     <label className={getLabelClass('zipCode')}>Zip Code</label>
-                     <input 
-                      type="text" 
-                      placeholder="e.g. 1200" 
-                      value={details.zipCode} 
-                      onChange={e => {setDetails({...details, zipCode: e.target.value}); if(errors.zipCode) setErrors({...errors, zipCode: ''});}} 
-                      className={getFieldClass('zipCode')} 
-                     />
-                     {errors.zipCode && <p className="text-[10px] font-black text-red-600 ml-1 uppercase">{errors.zipCode}</p>}
-                  </div>
+                  {errors.phone && <p className="text-[10px] font-bold text-red-500 ml-1 uppercase">Field is required</p>}
                 </div>
-              </div>
-              <div className="space-y-2">
-                <label className={getLabelClass('address')}>Shipping Address</label>
-                <textarea 
-                  placeholder="House #, Road #, Detailed Location..." 
-                  value={details.address} 
-                  onChange={e => {setDetails({...details, address: e.target.value}); if(errors.address) setErrors({...errors, address: ''});}} 
-                  rows={3} 
-                  className={`${getFieldClass('address')} resize-none`} 
-                />
-                {errors.address && <p className="text-[10px] font-black text-red-600 ml-1 uppercase">{errors.address}</p>}
-              </div>
 
-              <div className="space-y-6 pt-4">
-                 <span className={getLabelClass('courier')}>Choose Delivery Method</span>
-                 <div className="grid grid-cols-2 gap-4">
-                    {['Pathao', 'SteadFast'].map(c => (
-                       <button key={c} type="button" onClick={() => {setDetails({...details, courier: c as any}); if(errors.courier) setErrors({...errors, courier: ''});}} className={`p-6 rounded-[28px] border-2 transition-all flex items-center justify-between group ${details.courier === c ? 'border-[#5844FF] bg-[#5844FF]/5 shadow-lg' : errors.courier ? 'border-red-400 bg-red-50' : 'border-slate-100 bg-white hover:border-slate-300'}`}>
-                          <span className={`text-sm font-black uppercase tracking-widest ${details.courier === c ? 'text-[#5844FF]' : errors.courier ? 'text-red-600' : 'text-slate-500'}`}>{c} Courier</span>
-                          <div className={`w-5 h-5 rounded-full border-2 transition-all flex items-center justify-center ${details.courier === c ? 'border-[#5844FF] bg-[#5844FF]' : errors.courier ? 'border-red-500' : 'border-slate-300'}`}>
-                             {details.courier === c && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                          </div>
-                       </button>
-                    ))}
-                 </div>
-                 {errors.courier && <p className="text-[10px] font-black text-red-600 ml-1 uppercase">Please select a delivery partner</p>}
+                {/* Email Address - Full Width */}
+                <div className="md:col-span-2 space-y-3">
+                  <label className={`text-[11px] font-black uppercase tracking-widest ml-1 ${errors.email ? 'text-red-500' : 'text-gray-400'}`}>
+                    EMAIL ADDRESS
+                  </label>
+                  <input 
+                    type="email"
+                    value={formData.email} 
+                    onChange={e => handleInputChange('email', e.target.value)}
+                    className={`w-full px-8 py-5 bg-white rounded-2xl border-none outline-none font-bold shadow-sm transition-all focus:ring-2 ${errors.email ? 'ring-2 ring-red-500 text-red-600 placeholder:text-red-300' : 'focus:ring-indigo-100 text-gray-700'}`} 
+                    placeholder="name@example.com"
+                  />
+                  {errors.email && <p className="text-[10px] font-bold text-red-500 ml-1 uppercase">Field is required</p>}
+                </div>
+
+                {/* Shipping Address - Full Width */}
+                <div className="md:col-span-2 space-y-3">
+                  <label className={`text-[11px] font-black uppercase tracking-widest ml-1 ${errors.address ? 'text-red-500' : 'text-gray-400'}`}>
+                    SHIPPING ADDRESS
+                  </label>
+                  <textarea 
+                    value={formData.address} 
+                    onChange={e => handleInputChange('address', e.target.value)}
+                    rows={4} 
+                    className={`w-full px-8 py-6 bg-white rounded-[32px] border-none outline-none font-bold shadow-sm resize-none transition-all focus:ring-2 ${errors.address ? 'ring-2 ring-red-500 text-red-600 placeholder:text-red-300' : 'focus:ring-indigo-100 text-gray-700'}`} 
+                    placeholder="House No, Street, Area, City"
+                  />
+                  {errors.address && <p className="text-[10px] font-bold text-red-500 ml-1 uppercase">Field is required</p>}
+                </div>
               </div>
-            </section>
+            </div>
           </div>
 
           <div className="lg:w-1/3">
-            <div className="bg-[#111827] text-white rounded-[44px] p-12 sticky top-24 shadow-2xl border border-white/5">
+            <div className="bg-[#111827] text-white rounded-[44px] p-12 sticky top-24 shadow-2xl">
               <h3 className="text-2xl font-black mb-10 tracking-tight text-white">Order Summary</h3>
               <div className="space-y-5 mb-10 border-b border-white/10 pb-10">
-                 <div className="flex justify-between text-gray-400 text-sm font-bold uppercase tracking-wider"><span>Subtotal</span><span className="text-white">${total.toFixed(2)}</span></div>
+                 <div className="flex justify-between text-gray-400 text-sm font-bold uppercase tracking-wider"><span>Subtotal</span><span className="text-white">TK{total.toLocaleString()}</span></div>
                  <div className="flex justify-between text-gray-400 text-sm font-bold uppercase tracking-wider"><span>Shipping</span><span className="text-emerald-400 font-black">FREE</span></div>
                  <div className="pt-10 text-center">
                     <span className="text-gray-500 text-[10px] font-black uppercase tracking-[0.3em] block mb-4">Total Amount Due</span>
                     <div className="flex items-start justify-center">
-                       <span className="text-2xl font-black text-white/40 mt-2">$</span>
-                       <span className="text-7xl font-black tracking-tighter text-white">{total.toFixed(2)}</span>
+                       <span className="text-2xl font-black text-white/40 mt-2">TK</span>
+                       <span className="text-6xl md:text-7xl font-black tracking-tighter text-white">{total.toLocaleString()}</span>
                     </div>
                  </div>
               </div>
               <button 
-                 onClick={handleSubmitOrder} 
-                 disabled={isPlacingOrder} 
-                 className="w-full py-6 rounded-[28px] bg-[#5844FF] hover:bg-[#4a36e0] text-white font-black text-xl transition-all transform active:scale-95 disabled:opacity-50 shadow-xl shadow-[#5844FF]/20 flex items-center justify-center gap-3"
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="w-full bg-[#5844FF] hover:bg-[#4a36ff] text-white py-6 rounded-3xl font-black text-lg transition-all shadow-xl disabled:opacity-50 transform hover:scale-[1.02] active:scale-95"
               >
-                {isPlacingOrder ? (
-                  <svg className="w-6 h-6 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                ) : 'Confirm Order Now'}
+                {isSubmitting ? 'Processing...' : 'Complete Purchase'}
               </button>
-              <p className="text-[9px] font-black text-gray-500 mt-8 text-center uppercase tracking-widest leading-relaxed px-4 opacity-50">Verified Secure Transaction</p>
+              <p className="text-[10px] text-gray-500 text-center mt-6 uppercase font-bold tracking-widest">Secure Checkout Powered by Dataflow</p>
             </div>
           </div>
         </div>
       ) : (
-        <div className="space-y-8 animate-fadeIn max-w-4xl mx-auto">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-12">
-            <div>
-               <h2 className="text-4xl font-black text-slate-900 tracking-tight">Dibba Activity</h2>
-               <p className="text-slate-500 text-sm font-medium mt-2">Historical archive of your confirmed selections from Amar Bazari.</p>
-            </div>
-            <button onClick={() => window.location.reload()} className="px-6 py-3 rounded-2xl bg-white border border-slate-200 text-xs font-black text-[#5844FF] uppercase tracking-widest shadow-sm hover:shadow-md transition-all">New Order</button>
+        <div className="space-y-12">
+          <div className="flex justify-between items-center border-b border-gray-100 pb-8">
+            <h2 className="text-4xl font-black text-gray-900 tracking-tighter">My Dibba</h2>
           </div>
           
           {orders.length === 0 ? (
-            <div className="bg-white p-24 rounded-[48px] border border-dashed border-slate-200 text-center shadow-inner">
-              <p className="text-slate-400 font-bold text-lg">No orders confirmed in your Dibba.</p>
-            </div>
+            <div className="py-20 text-center text-gray-400 font-bold uppercase tracking-widest">Your Dibba is empty.</div>
           ) : (
             <div className="grid grid-cols-1 gap-6">
               {orders.map((order) => (
-                <div key={order.id} className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-center gap-8 group hover:border-[#5844FF]/30 transition-all hover:shadow-lg">
-                  <div className="flex items-center gap-8">
-                    <div className="w-16 h-16 rounded-[24px] bg-slate-50 flex items-center justify-center text-[#5844FF]/20 font-black text-2xl">#</div>
+                <div key={order.id} className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-center gap-8 group hover:border-[#5844FF]/30 transition-all">
+                  <div className="flex items-center gap-6">
+                    <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center font-black text-[#5844FF] text-2xl group-hover:scale-110 transition-transform">
+                      {order.id.slice(0, 2)}
+                    </div>
                     <div>
-                      <h4 className="text-xl font-black text-slate-900 tracking-tight">Order #{order.id}</h4>
-                      <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">{new Date(order.timestamp).toLocaleDateString()}</p>
+                      <h4 className="text-lg font-black text-slate-900">Order #{order.id}</h4>
+                      <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">{new Date(order.timestamp).toLocaleDateString()}</p>
                     </div>
                   </div>
                   <div className="flex flex-col items-center md:items-end gap-3">
-                    <span className="text-3xl font-black text-slate-900 tracking-tighter">${order.totalPrice.toFixed(2)}</span>
-                    <span className={`px-5 py-2 rounded-full text-[9px] font-black uppercase tracking-[0.2em] shadow-sm ${
-                      order.orderStatus === 'Delivered' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-[#5844FF]'
-                    }`}>{order.orderStatus}</span>
+                    <span className="text-3xl font-black text-slate-900 tracking-tighter">TK{order.totalPrice.toLocaleString()}</span>
+                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${order.orderStatus === 'Delivered' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                      {order.orderStatus}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -357,12 +292,6 @@ const UserPanel: React.FC<UserPanelProps> = ({
           )}
         </div>
       )}
-      <style>{`
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fadeIn { animation: fadeIn 0.6s ease-out forwards; }
-      `}</style>
     </div>
   );
 };

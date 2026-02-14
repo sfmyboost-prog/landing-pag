@@ -10,85 +10,142 @@ interface ProductLandingProps {
 }
 
 const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, otherProducts, onProductClick, onOrderNow }) => {
-  // Only show products that are not deactivated
   const activeOtherProducts = otherProducts.filter(p => p.isActive !== false);
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-8 animate-fadeIn">
-      {/* Hero Section - Main Product */}
-      <div className="relative bg-gray-50 rounded-3xl overflow-hidden mb-16 flex flex-col lg:flex-row items-center min-h-[500px]">
-        <div className="w-full lg:w-1/2 p-12 flex flex-col justify-center order-2 lg:order-1">
-          <span className="text-indigo-600 font-bold tracking-widest text-sm mb-4 uppercase">Featured Release</span>
-          <h1 className="text-5xl lg:text-7xl font-extrabold text-gray-900 leading-tight mb-6">
-            {mainProduct.name}
-          </h1>
-          <p className="text-gray-600 text-lg mb-8 max-w-md">
-            {mainProduct.description.substring(0, 150)}...
-          </p>
-          <div className="flex items-center gap-6 mb-8">
-            <span className="text-4xl font-bold text-gray-900">${mainProduct.price.toFixed(2)}</span>
-            <span className="text-xl text-gray-400 line-through">${mainProduct.originalPrice.toFixed(2)}</span>
-          </div>
-          <button 
-            onClick={() => onOrderNow(mainProduct)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-4 rounded-xl font-bold text-lg transition-all transform hover:scale-105 shadow-xl shadow-indigo-200 w-fit"
-          >
-            Order Now
-          </button>
-        </div>
-        <div className="w-full lg:w-1/2 h-[400px] lg:h-[600px] order-1 lg:order-2">
-          <img 
-            src={mainProduct.images[0]} 
-            alt={mainProduct.name}
-            className="w-full h-full object-cover"
-          />
-        </div>
-      </div>
-
-      {/* Smaller Products Grid */}
-      <section>
-        <div className="flex justify-between items-end mb-8">
-          <div>
-            <h2 className="text-3xl font-bold text-gray-900">More Collections</h2>
-            <p className="text-gray-500 mt-2">Curated essentials for your premium lifestyle.</p>
-          </div>
-          <button className="text-indigo-600 font-semibold flex items-center gap-2 hover:gap-3 transition-all">
-            View All Collection
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-          </button>
+    <div className="animate-fadeIn">
+      {/* Hero Section - Main Product focus */}
+      <section className="relative min-h-[90vh] flex items-center bg-white overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <div className="absolute top-[-10%] right-[-5%] w-[600px] h-[600px] bg-indigo-50 rounded-full blur-3xl opacity-50"></div>
+          <div className="absolute bottom-[-10%] left-[-5%] w-[400px] h-[400px] bg-purple-50 rounded-full blur-3xl opacity-30"></div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {activeOtherProducts.map(product => (
-            <div 
-              key={product.id}
-              className="group cursor-pointer bg-white rounded-2xl overflow-hidden border border-gray-100 transition-all hover:shadow-2xl hover:-translate-y-2"
-              onClick={() => onProductClick(product)}
-            >
-              <div className="aspect-[4/5] overflow-hidden relative">
-                <img 
-                  src={product.images[0]} 
-                  alt={product.name}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                />
-                <div className="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-indigo-600 shadow-sm">
-                  {Math.round((1 - product.price/product.originalPrice) * 100)}% OFF
+        <div className="max-w-7xl mx-auto px-6 w-full relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center py-20">
+          <div className="order-2 lg:order-1">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-xs font-bold uppercase tracking-widest mb-6">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-600"></span>
+              </span>
+              Featured Arrival
+            </div>
+            <h1 className="text-6xl lg:text-8xl font-black text-gray-900 leading-[1.1] mb-8 tracking-tighter">
+              {mainProduct.name}
+            </h1>
+            <p className="text-gray-500 text-xl mb-10 max-w-lg leading-relaxed font-medium">
+              {mainProduct.description}
+            </p>
+            <div className="flex items-center gap-8 mb-12">
+              <div className="flex flex-col">
+                <span className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-1">Price</span>
+                <span className="text-4xl font-black text-gray-900">TK{mainProduct.price.toLocaleString()}</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-1">MSRP</span>
+                <span className="text-xl text-gray-300 line-through">TK{mainProduct.originalPrice.toLocaleString()}</span>
+              </div>
+              <div className="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-2xl font-black text-sm">
+                Save {Math.round((1 - mainProduct.price/mainProduct.originalPrice) * 100)}%
+              </div>
+            </div>
+            
+            <div className="flex flex-col gap-8">
+              <div className="flex flex-wrap gap-4">
+                <button 
+                  onClick={() => onOrderNow(mainProduct)}
+                  className="bg-gray-900 hover:bg-black text-white px-12 py-5 rounded-2xl font-black text-lg transition-all transform hover:scale-105 shadow-2xl shadow-gray-200"
+                >
+                  Order Now
+                </button>
+              </div>
+
+              {/* Customer Rating Section - Moved to Left Column as requested */}
+              <div className="inline-flex items-center gap-4 bg-white p-5 rounded-[2rem] shadow-sm border border-gray-100 w-fit animate-fadeIn">
+                <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white text-xl shadow-lg shadow-indigo-100">✨</div>
+                <div>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] leading-none mb-1">Customer Rating</p>
+                  <p className="text-xl font-black text-gray-900 leading-none">{mainProduct.rating} / 5.0</p>
                 </div>
               </div>
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-2">
-                  <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">{product.category}</span>
-                  <div className="flex items-center gap-1">
-                    <svg className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
-                    <span className="text-sm font-bold text-gray-700">{product.rating}</span>
+            </div>
+          </div>
+          
+          <div className="order-1 lg:order-2 relative">
+             <div className="relative z-10 aspect-[4/5] lg:aspect-square overflow-hidden rounded-[3rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] group">
+                <img 
+                  src={mainProduct.images[0]} 
+                  alt={mainProduct.name}
+                  className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
+                />
+             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Grid Section */}
+      <section className="bg-gray-50 py-32 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-end mb-20 gap-8">
+            <div className="max-w-xl">
+              <h2 className="text-5xl font-black text-gray-900 tracking-tighter mb-4">Curated Collection</h2>
+              <p className="text-gray-500 font-medium text-lg uppercase tracking-widest text-[10px]">Exceptional quality. Uncompromising style.</p>
+            </div>
+            <button className="bg-white px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest shadow-sm hover:shadow-md transition-all border border-gray-100">
+              Browse Everything
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
+            {activeOtherProducts.map(product => (
+              <div 
+                key={product.id}
+                className="group cursor-pointer flex flex-col"
+                onClick={() => onProductClick(product)}
+              >
+                <div className="aspect-[4/5] overflow-hidden rounded-[2.5rem] relative mb-8 bg-white shadow-sm transition-all duration-500 group-hover:shadow-2xl group-hover:-translate-y-2">
+                  <img 
+                    src={product.images[0]} 
+                    alt={product.name}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                  />
+                  <div className="absolute top-6 left-6 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-y-4 group-hover:translate-y-0">
+                    <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-full text-[10px] font-black text-indigo-600 uppercase tracking-widest shadow-xl">
+                      {product.category}
+                    </div>
+                  </div>
+                  <div className="absolute bottom-6 right-6">
+                    <div className="bg-indigo-600 text-white w-14 h-14 rounded-2xl flex items-center justify-center shadow-2xl shadow-indigo-200 transform translate-y-20 group-hover:translate-y-0 transition-all duration-500">
+                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    </div>
                   </div>
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 group-hover:text-indigo-600 transition-colors mb-2">{product.name}</h3>
-                <div className="flex items-center gap-3">
-                  <span className="text-xl font-extrabold text-gray-900">${product.price.toFixed(2)}</span>
-                  <span className="text-sm text-gray-400 line-through">${product.originalPrice.toFixed(2)}</span>
+                <div className="px-2">
+                  <h3 className="text-2xl font-black text-gray-900 mb-2 transition-colors group-hover:text-indigo-600">{product.name}</h3>
+                  <div className="flex items-center gap-4">
+                    <span className="text-xl font-black text-gray-900">TK{product.price.toLocaleString()}</span>
+                    <span className="text-sm font-bold text-gray-300 line-through">TK{product.originalPrice.toLocaleString()}</span>
+                  </div>
                 </div>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Trust Bar */}
+      <section className="bg-white py-20 border-y border-gray-50">
+        <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 lg:grid-cols-4 gap-12">
+          {[
+            { label: 'Secure Delivery', icon: '🚚', sub: 'Nationwide shipping' },
+            { label: 'Premium Quality', icon: '💎', sub: 'Curated selections' },
+            { label: 'Secure Payment', icon: '🛡️', sub: 'COD & Online' },
+            { label: '24/7 Support', icon: '💬', sub: 'Always here' },
+          ].map((item, i) => (
+            <div key={i} className="flex flex-col items-center text-center">
+              <span className="text-4xl mb-4">{item.icon}</span>
+              <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-1">{item.label}</h4>
+              <p className="text-xs text-gray-400 font-medium">{item.sub}</p>
             </div>
           ))}
         </div>

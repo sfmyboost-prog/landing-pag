@@ -12,7 +12,9 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "@google/genai": "^1.41.0",
-    "@supabase/supabase-js": "^2.45.4"
+    "@supabase/supabase-js": "^2.45.4",
+    "otpauth": "^9.3.1",
+    "qrcode": "^1.5.3"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
