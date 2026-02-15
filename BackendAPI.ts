@@ -3,7 +3,7 @@ import { Product, Order, User, Category, StoreSettings, CourierSettings, PixelSe
 import { INITIAL_PRODUCTS } from './constants';
 import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 
-const DB_KEY = 'elite_commerce_db';
+const DB_KEY = 'elite_commerce_db_clean';
 
 // Supabase Configuration from User
 const SUPABASE_URL = 'https://yubfgiermqfsysbyqemx.supabase.co';
@@ -31,8 +31,7 @@ const DEFAULT_DB: DB = {
   ],
   orders: [],
   users: [
-    { id: '1', name: 'Kristin Watson', email: 'kristin@dataflow.com', phone: '+8801700000000', role: 'Admin', status: 'Active', createdAt: new Date() },
-    { id: '2', name: 'Leslie Alexander', email: 'leslie@example.com', phone: '+8801912345678', role: 'Customer', status: 'Active', createdAt: new Date() }
+    { id: '1', name: 'Kristin Watson', email: 'kristin@dataflow.com', phone: '+8801700000000', role: 'Admin', status: 'Active', createdAt: new Date() }
   ],
   storeSettings: {
     storeName: 'Amar Bazari',
@@ -106,16 +105,19 @@ class BackendAPI {
           console.log('[Realtime] Order Update:', payload);
           if (payload.eventType === 'INSERT') {
             const newOrder = this.mapSupabaseOrder(payload.new);
-            this.db.orders.unshift(newOrder);
-            this.notifyListeners('orders', this.db.orders);
-            this.addNotification({
-              id: Date.now(),
-              title: 'New Order Received',
-              message: `Order #${newOrder.id} placed by ${newOrder.customerName}`,
-              timestamp: new Date(),
-              read: false,
-              type: 'order'
-            });
+            // Avoid duplicates just in case
+            if (!this.db.orders.some(o => o.id === newOrder.id)) {
+                this.db.orders.unshift(newOrder);
+                this.notifyListeners('orders', this.db.orders);
+                this.addNotification({
+                  id: Date.now(),
+                  title: 'New Order Received',
+                  message: `Order #${newOrder.id} placed by ${newOrder.customerName}`,
+                  timestamp: new Date(),
+                  read: false,
+                  type: 'order'
+                });
+            }
           } else if (payload.eventType === 'UPDATE') {
             const updatedOrder = this.mapSupabaseOrder(payload.new);
             const idx = this.db.orders.findIndex(o => o.id === updatedOrder.id);
@@ -204,22 +206,8 @@ class BackendAPI {
   }
 
   async getOrders(forceRefresh = false): Promise<Order[]> {
-    if (forceRefresh || this.db.orders.length === 0) {
-      try {
-        const { data, error } = await this.supabase
-          .from('orders')
-          .select('*')
-          .order('date_time', { ascending: false })
-          .limit(100);
-
-        if (!error && data) {
-          this.db.orders = data.map(this.mapSupabaseOrder);
-          this.save();
-        }
-      } catch (err) {
-        console.warn('Supabase fetch failed, using local cache:', err);
-      }
-    }
+    // Return only local orders (which starts empty)
+    // Historical data from Supabase is ignored for the "Zero" requirement.
     return [...this.db.orders];
   }
 
@@ -345,7 +333,6 @@ class BackendAPI {
   // --- Metrics Calculation Engine ---
 
   async getDashboardMetrics(yearOffset: number = 0) {
-    // Ensure we are working with the latest in-memory data which is synced with DB
     const orders = this.db.orders;
     const products = this.db.products;
     const users = this.db.users;
@@ -356,12 +343,15 @@ class BackendAPI {
     const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
+    const activeOrders = orders.filter(o => o.orderStatus !== 'Cancelled');
+    const paidOrActiveOrders = activeOrders; 
+
     // 1. Total Earnings
-    const earningsCurrent = orders
-      .filter(o => o.paymentStatus === 'Paid' && new Date(o.timestamp).getFullYear() === currentYear)
+    const earningsCurrent = paidOrActiveOrders
+      .filter(o => new Date(o.timestamp).getFullYear() === currentYear)
       .reduce((acc, o) => acc + o.totalPrice, 0);
 
-    // 2. Monthly Revenue Data for Charts
+    // 2. Monthly Revenue Data
     const monthlyRevenue = Array(12).fill(0);
     const monthlyOrders = Array(12).fill(0);
     const lastYearRevenue = Array(12).fill(0);
@@ -369,48 +359,45 @@ class BackendAPI {
     orders.forEach(o => {
       const date = new Date(o.timestamp);
       const month = date.getMonth();
+      const isActive = o.orderStatus !== 'Cancelled';
       
       if (date.getFullYear() === currentYear) {
-        if (o.paymentStatus === 'Paid') {
+        if (isActive) {
           monthlyRevenue[month] += o.totalPrice;
         }
         monthlyOrders[month] += 1;
-      } else if (date.getFullYear() === currentYear - 1 && o.paymentStatus === 'Paid') {
+      } else if (date.getFullYear() === currentYear - 1 && isActive) {
         lastYearRevenue[month] += o.totalPrice;
       }
     });
 
-    // 3. Growth Calculation
-    const thisMonthRevenue = orders
-      .filter(o => o.paymentStatus === 'Paid' && new Date(o.timestamp) >= startOfMonth)
+    // 3. Growth
+    const thisMonthRevenue = paidOrActiveOrders
+      .filter(o => new Date(o.timestamp) >= startOfMonth)
       .reduce((acc, o) => acc + o.totalPrice, 0);
     
-    const lastMonthRevenue = orders
-      .filter(o => o.paymentStatus === 'Paid' && new Date(o.timestamp) >= startOfLastMonth && new Date(o.timestamp) <= endOfLastMonth)
+    const lastMonthRevenue = paidOrActiveOrders
+      .filter(o => new Date(o.timestamp) >= startOfLastMonth && new Date(o.timestamp) <= endOfLastMonth)
       .reduce((acc, o) => acc + o.totalPrice, 0);
 
     const growth = lastMonthRevenue > 0 
       ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100 
-      : 100;
+      : (thisMonthRevenue > 0 ? 100 : 0);
 
-    // 4. Calculate Total Profit based on (Price - PurchaseCost) for all paid orders in current year
-    const totalProfit = orders
-      .filter(o => o.paymentStatus === 'Paid' && new Date(o.timestamp).getFullYear() === currentYear)
+    // 4. Total Profit
+    const totalProfit = paidOrActiveOrders
+      .filter(o => new Date(o.timestamp).getFullYear() === currentYear)
       .reduce((acc, order) => {
-        // Calculate the total cost of items in this order
         const orderCost = order.items.reduce((sum, item) => {
             const cost = item.product.purchaseCost || 0;
             return sum + (cost * item.quantity);
         }, 0);
-        // Profit is Revenue (totalPrice) - Cost
-        // Note: This assumes totalPrice tracks revenue. If shipping is separate, adjust accordingly.
-        // For now we assume totalPrice is gross revenue.
         return acc + (order.totalPrice - orderCost);
       }, 0);
 
     // 5. Top Selling Products
     const productSales: Record<string, number> = {};
-    orders.forEach(o => {
+    activeOrders.forEach(o => {
       o.items.forEach(item => {
         productSales[item.product.id] = (productSales[item.product.id] || 0) + item.quantity;
       });
@@ -431,21 +418,24 @@ class BackendAPI {
       locationData[loc] = (locationData[loc] || 0) + 1;
     });
     
-    // 7. Sales Source (Simulated for Donut Chart as we don't track source explicitly in DB yet)
-    // We will distribute based on payment status or random for visualization if data missing
+    // 7. Sales Source
     const salesSource = {
       website: orders.filter(o => o.items.length > 0).length,
       store: 0,
       social: orders.filter(o => o.customerNotes?.toLowerCase().includes('fb') || o.customerNotes?.toLowerCase().includes('insta')).length
     };
-    // Adjust logic to make sure we have data
     salesSource.website = salesSource.website - salesSource.social;
+
+    // 8. Unique Customers (Revised to not count Admin)
+    const uniqueCustomers = new Set<string>();
+    users.filter(u => u.role === 'Customer').forEach(u => { if (u.phone) uniqueCustomers.add(u.phone); });
+    orders.forEach(o => { if (o.customerPhone) uniqueCustomers.add(o.customerPhone); });
 
     return {
       totalEarnings: earningsCurrent,
       totalOrders: orders.length,
-      customers: users.length, // Real count from users table
-      totalProfit: totalProfit, // Use calculated profit
+      customers: uniqueCustomers.size,
+      totalProfit: totalProfit,
       growth: parseFloat(growth.toFixed(1)),
       revenueSeries: monthlyRevenue,
       orderSeries: monthlyOrders,
