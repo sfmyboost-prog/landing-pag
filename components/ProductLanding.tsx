@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Product } from '../types';
 
@@ -17,13 +18,13 @@ const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, otherProdu
       {/* Zoom Overlay */}
       {isZoomed && (
         <div 
-          className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 cursor-zoom-out transition-all duration-300"
+          className="fixed inset-0 z-[100] bg-white flex items-center justify-center cursor-zoom-out transition-all duration-300"
           onClick={() => setIsZoomed(false)}
         >
           <img 
             src={mainProduct.images[0]} 
             alt={mainProduct.name} 
-            className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl animate-scaleIn"
+            className="w-full h-full object-contain animate-scaleIn"
           />
         </div>
       )}

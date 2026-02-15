@@ -35,13 +35,13 @@ const CheckoutProductVisual: React.FC<{ item: CartItem, onRemove: () => void }> 
       {/* Zoom Overlay */}
       {isZoomed && (
         <div 
-          className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out transition-opacity duration-300"
+          className="fixed inset-0 z-[200] bg-white flex items-center justify-center cursor-zoom-out transition-opacity duration-300"
           onClick={() => setIsZoomed(false)}
         >
           <img 
             src={item.product.images[activeImageIndex]} 
             alt={item.product.name} 
-            className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl animate-scaleIn"
+            className="w-full h-full object-contain animate-scaleIn"
           />
         </div>
       )}
