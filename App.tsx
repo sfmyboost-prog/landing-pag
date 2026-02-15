@@ -9,9 +9,60 @@ import ProductDetailView from './components/ProductDetailView';
 import AdminPanel from './components/AdminPanel';
 import AdminLogin from './components/AdminLogin';
 import UserPanel from './components/UserPanel';
+import LoadingOverlay from './components/LoadingOverlay';
 
 const App: React.FC = () => {
-  const [view, setView] = useState<ViewState>('LANDING');
+  const [view, setInternalView] = useState<ViewState>('LANDING');
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Helper to trigger smooth loading transitions
+  const triggerLoading = useCallback(async (minDuration = 800) => {
+    setIsLoading(true);
+    await new Promise(resolve => setTimeout(resolve, minDuration));
+    // We don't set false here immediately; usually we wait for the action to complete
+    // but for simple nav, we can return a promise that resolves when "ready"
+    return () => setTimeout(() => setIsLoading(false), 200); // smooth fade out
+  }, []);
+
+  // Navigation Helper with History Support and Loading Effect
+  const setView = useCallback(async (newView: ViewState) => {
+    if (newView === view) return;
+    
+    // Start Loading
+    const stopLoading = await triggerLoading(800);
+    
+    setInternalView(currentView => {
+      if (currentView !== newView) {
+        window.history.pushState({ view: newView }, '');
+        return newView;
+      }
+      return currentView;
+    });
+
+    // Stop Loading
+    stopLoading();
+  }, [triggerLoading, view]);
+
+  // Handle Browser Back Button
+  useEffect(() => {
+    // Ensure initial state exists
+    if (!window.history.state) {
+      window.history.replaceState({ view: 'LANDING' }, '');
+    }
+
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && event.state.view) {
+        setInternalView(event.state.view);
+      } else {
+        // Fallback if state is missing (e.g. external link return)
+        setInternalView('LANDING');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -78,7 +129,9 @@ const App: React.FC = () => {
 
   const mainProduct = products.find(p => p.isMain) || products[0];
 
-  const handleProductClick = useCallback((product: Product) => {
+  const handleProductClick = useCallback(async (product: Product) => {
+    const stopLoading = await triggerLoading(1000);
+    
     const directItem: CartItem = {
       product,
       quantity: 1,
@@ -86,7 +139,10 @@ const App: React.FC = () => {
       selectedColor: product.colors[0] || '#000'
     };
     setCart([directItem]);
-    setView('USER');
+    
+    // Navigate manually to avoid double loading
+    setInternalView('USER');
+    window.history.pushState({ view: 'USER' }, '');
     
     // Tracking AddToCart
     PixelService.trackEvent('AddToCart', {
@@ -94,9 +150,13 @@ const App: React.FC = () => {
       content_ids: [product.id],
       content_type: 'product'
     }, pixelSettings);
-  }, [pixelSettings]);
 
-  const handleOrderNow = (item: CartItem | Product) => {
+    stopLoading();
+  }, [pixelSettings, triggerLoading]);
+
+  const handleOrderNow = async (item: CartItem | Product) => {
+    const stopLoading = await triggerLoading(1200);
+
     if ('id' in item) {
       const directItem: CartItem = {
         product: item,
@@ -108,7 +168,9 @@ const App: React.FC = () => {
     } else {
       setCart([item]);
     }
-    setView('USER');
+    
+    setInternalView('USER');
+    window.history.pushState({ view: 'USER' }, '');
     
     // Tracking InitiateCheckout
     const product = 'id' in item ? item : item.product;
@@ -117,6 +179,8 @@ const App: React.FC = () => {
       content_ids: [product.id],
       content_type: 'product'
     }, pixelSettings);
+
+    stopLoading();
   };
 
   const updateCartItem = (index: number, updates: Partial<CartItem>) => {
@@ -135,6 +199,9 @@ const App: React.FC = () => {
 
   const placeOrder = async (details: { name: string; email: string; phone: string; address: string; location: string; zipCode: string; notes: string; courier: 'Pathao' | 'SteadFast' | '' }) => {
     if (cart.length === 0) return;
+    
+    const stopLoading = await triggerLoading(2000); // Longer delay for "processing"
+
     const totalPrice = cart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
     
     const datePart = new Date().toISOString().slice(2, 10).replace(/-/g, '');
@@ -165,6 +232,7 @@ const App: React.FC = () => {
     PixelService.trackPurchase(newOrder, pixelSettings);
     
     clearCart();
+    stopLoading();
   };
 
   const handleCloseSuccess = () => {
@@ -174,6 +242,10 @@ const App: React.FC = () => {
       setIsCelebrating(false);
     }, 2000);
   };
+
+  // Admin and Data Actions don't necessarily need the big full-screen loader
+  // as they are typically quicker or have local feedback. 
+  // We keep the overlay for major view shifts.
 
   const updateProduct = async (updatedProduct: Product) => {
     await api.saveProduct(updatedProduct);
@@ -200,9 +272,12 @@ const App: React.FC = () => {
     setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
   };
 
-  const handleAdminLogout = () => {
+  const handleAdminLogout = async () => {
+    const stopLoading = await triggerLoading(500);
     setIsAdminAuthenticated(false);
-    setView('LANDING');
+    setInternalView('LANDING'); // Skip standard setView to control flow manually
+    window.history.pushState({ view: 'LANDING' }, '');
+    stopLoading();
   };
 
   const handleUpdateCourierSettings = async (settings: CourierSettings) => {
@@ -217,6 +292,9 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8F9FB] relative overflow-x-hidden">
+      {/* Global Loading Overlay */}
+      <LoadingOverlay isVisible={isLoading} />
+
       {isCelebrating && (
         <div className="fixed inset-0 pointer-events-none z-[300] flex justify-between animate-glowPulse">
           <div className="w-2 h-full bg-gradient-to-b from-indigo-500 via-purple-500 to-indigo-500 blur-md shadow-[0_0_20px_rgba(99,102,241,0.8)]"></div>
@@ -285,6 +363,7 @@ const App: React.FC = () => {
             onUpdateCartItem={updateCartItem}
             onRemoveFromCart={removeFromCart}
             onCloseSuccess={handleCloseSuccess}
+            onBack={() => setView('LANDING')}
           />
         )}
       </main>
