@@ -6,7 +6,7 @@ import { Order, CourierSettings } from './types';
  * Supports Pathao, SteadFast Courier, and Facebook Pixel CAPI.
  */
 
-const STEADFAST_DEFAULT_URL = 'https://portal.steadfast.com.bd/api/v1';
+const STEADFAST_DEFAULT_URL = 'https://portal.packzy.com/api/v1';
 const PATHAO_DEFAULT_URL = 'https://api-hermes.pathao.com/aladdin/api/v1';
 
 // URL Verification Diagnostic

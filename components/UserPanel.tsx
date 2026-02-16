@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
-import { CartItem, Product, User, Order } from '../types';
+import { CartItem, Product, User, Order, StoreSettings } from '../types';
 
 interface UserPanelProps {
   cart: CartItem[];
   users: User[];
   orders: Order[];
   wishlist: Product[];
+  storeSettings: StoreSettings;
   onViewProduct: (p: Product) => void;
   onPlaceOrder: (details: { name: string; email: string; phone: string; address: string; location: string; zipCode: string; notes: string; courier: 'Pathao' | 'SteadFast' | '' }) => Promise<void>;
   onUpdateCartItem: (index: number, updates: Partial<CartItem>) => void;
@@ -15,7 +16,11 @@ interface UserPanelProps {
   onBack: () => void;
 }
 
-const CheckoutProductVisual: React.FC<{ item: CartItem, onRemove: () => void }> = ({ item, onRemove }) => {
+const CheckoutProductVisual: React.FC<{ 
+  item: CartItem, 
+  onRemove: () => void,
+  onUpdateQuantity: (qty: number) => void 
+}> = ({ item, onRemove, onUpdateQuantity }) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
 
@@ -63,7 +68,7 @@ const CheckoutProductVisual: React.FC<{ item: CartItem, onRemove: () => void }> 
           </div>
         </div>
         <div className="flex flex-row md:flex-col justify-between md:justify-start items-center md:items-end w-full md:w-auto gap-4 md:gap-0">
-          <span className="text-2xl md:text-4xl lg:text-5xl font-black text-[#5844FF] tracking-tighter leading-none">TK{item.product.price.toLocaleString()}</span>
+          <span className="text-2xl md:text-4xl lg:text-5xl font-black text-[#5844FF] tracking-tighter leading-none">TK{(item.product.price * item.quantity).toLocaleString()}</span>
           <button 
             onClick={onRemove} 
             className="md:mt-1 text-[10px] font-black text-gray-300 hover:text-red-500 uppercase tracking-widest transition-colors"
@@ -100,7 +105,7 @@ const CheckoutProductVisual: React.FC<{ item: CartItem, onRemove: () => void }> 
         </div>
       </div>
 
-      {/* Thumbnails Section */}
+      {/* Thumbnails & Quantity Section */}
       <div className="flex flex-col gap-6">
         <div className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar pb-2 px-1">
           {item.product.images.map((img, imgIdx) => (
@@ -117,13 +122,36 @@ const CheckoutProductVisual: React.FC<{ item: CartItem, onRemove: () => void }> 
           ))}
         </div>
 
-        {/* Short Description */}
+        {/* Short Description & Quantity Selector */}
         {item.product.shortDescription && (
-          <div className="mt-2 md:mt-4 px-1 md:px-2">
-            <h4 className="text-[10px] md:text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2 md:mb-3">Product Overview</h4>
-            <p className="text-base text-gray-600 font-medium leading-relaxed max-w-2xl">
-              {item.product.shortDescription}
-            </p>
+          <div className="mt-2 md:mt-4 px-1 md:px-2 flex flex-col md:flex-row justify-between items-end gap-6">
+            <div className="max-w-2xl">
+              <h4 className="text-[10px] md:text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2 md:mb-3">Product Overview</h4>
+              <p className="text-base text-gray-600 font-medium leading-relaxed">
+                {item.product.shortDescription}
+              </p>
+            </div>
+            
+            {/* Quantity Selector */}
+            <div className="flex items-center gap-3 bg-white p-2 rounded-2xl shadow-sm border border-gray-100">
+               <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-2">Qty</span>
+               <div className="flex items-center bg-gray-50 rounded-xl">
+                  <button 
+                    onClick={() => onUpdateQuantity(Math.max(1, item.quantity - 1))}
+                    className="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-indigo-600 hover:bg-white rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent"
+                    disabled={item.quantity <= 1}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M20 12H4"/></svg>
+                  </button>
+                  <span className="w-8 text-center font-black text-gray-900 text-lg">{item.quantity}</span>
+                  <button 
+                    onClick={() => onUpdateQuantity(item.quantity + 1)}
+                    className="w-10 h-10 flex items-center justify-center text-gray-500 hover:text-indigo-600 hover:bg-white rounded-lg transition-all"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"/></svg>
+                  </button>
+               </div>
+            </div>
           </div>
         )}
       </div>
@@ -145,7 +173,8 @@ const UserPanel: React.FC<UserPanelProps> = ({
   cart, 
   users,
   orders,
-  wishlist, 
+  wishlist,
+  storeSettings,
   onViewProduct, 
   onPlaceOrder, 
   onUpdateCartItem,
@@ -233,7 +262,12 @@ const UserPanel: React.FC<UserPanelProps> = ({
           <div className="lg:w-2/3 space-y-12 md:space-y-16">
             <div className="space-y-12 md:space-y-16">
               {cart.map((item, idx) => (
-                <CheckoutProductVisual key={idx} item={item} onRemove={() => onRemoveFromCart(idx)} />
+                <CheckoutProductVisual 
+                  key={idx} 
+                  item={item} 
+                  onRemove={() => onRemoveFromCart(idx)} 
+                  onUpdateQuantity={(qty) => onUpdateCartItem(idx, { quantity: qty })}
+                />
               ))}
             </div>
             
@@ -348,15 +382,32 @@ const UserPanel: React.FC<UserPanelProps> = ({
                 {isSubmitting ? 'Processing...' : 'Complete Purchase'}
               </button>
 
-              <a 
-                href="tel:01911251608"
-                className="w-full mt-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-gray-300 hover:text-white py-4 rounded-2xl md:rounded-3xl font-bold text-sm md:text-base flex items-center justify-center gap-3 transition-all group"
-              >
-                <div className="p-1.5 rounded-full bg-white/5 group-hover:bg-emerald-500/20 text-gray-400 group-hover:text-emerald-400 transition-colors">
-                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
-                </div>
-                <span>Order via Phone: 01911251608</span>
-              </a>
+              {/* WhatsApp Button */}
+              {storeSettings.whatsappOrderLink ? (
+                <a 
+                  href={storeSettings.whatsappOrderLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full mt-4 bg-[#25D366] hover:bg-[#20bd5a] text-white py-4 rounded-2xl md:rounded-3xl font-black text-lg shadow-xl hover:shadow-[#25D366]/30 transition-all transform hover:scale-[1.02] flex items-center justify-center gap-3 group border border-transparent"
+                >
+                   <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                   <span>WhatsApp Message</span>
+                </a>
+              ) : (
+                // Fallback to phone if no link is configured, but hidden visually or styled differently if preferred. 
+                // Based on prompt, replacing specifically "Order via Phone".
+                <a 
+                  href={`https://wa.me/${storeSettings.whatsappNumber?.replace(/[^0-9]/g, '') || ''}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full mt-4 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-gray-300 hover:text-white py-4 rounded-2xl md:rounded-3xl font-bold text-sm md:text-base flex items-center justify-center gap-3 transition-all group"
+                >
+                  <div className="p-1.5 rounded-full bg-white/5 group-hover:bg-emerald-500/20 text-gray-400 group-hover:text-emerald-400 transition-colors">
+                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+                  </div>
+                  <span>WhatsApp Message</span>
+                </a>
+              )}
               
               <p className="text-[9px] md:text-[10px] text-gray-500 text-center mt-6 md:mt-8 uppercase font-bold tracking-widest leading-loose">
                 SECURE CHECKOUT POWERED BY DATAFLOW<br/>

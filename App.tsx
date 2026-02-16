@@ -70,7 +70,7 @@ const App: React.FC = () => {
       const newRelativePath = `${window.location.pathname}?${url.searchParams.toString()}`;
       window.history.pushState({ view: newView, productId }, '', newRelativePath);
     } catch (e) {
-      console.warn('Navigation state update failed (likely restricted environment):', e);
+      // Silently fail in restricted environments (sandboxes/iframes) to prevent console warnings
     }
 
     stopLoading();
@@ -99,7 +99,9 @@ const App: React.FC = () => {
     logoUrl: 'A',
     currency: 'BDT',
     taxPercentage: 0,
-    shippingFee: 0
+    shippingFee: 0,
+    whatsappNumber: '',
+    whatsappOrderLink: ''
   });
 
   const [courierSettings, setCourierSettings] = useState<CourierSettings>({
@@ -138,14 +140,15 @@ const App: React.FC = () => {
   // Initial Data Fetch & Realtime Subscriptions
   useEffect(() => {
     const fetchData = async () => {
-      const [p, c, o, u, cs, ps, tfa] = await Promise.all([
+      const [p, c, o, u, cs, ps, tfa, ss] = await Promise.all([
         api.getProducts(),
         api.getCategories(),
         api.getOrders(),
         api.getUsers(),
         api.getCourierSettings(),
         api.getPixelSettings(),
-        api.getTwoFactorSettings()
+        api.getTwoFactorSettings(),
+        api.getStoreSettings()
       ]);
       setProducts(p);
       setCategories(c);
@@ -154,6 +157,7 @@ const App: React.FC = () => {
       setCourierSettings(cs);
       setPixelSettings(ps);
       setTwoFactorSettings(tfa);
+      setStoreSettings(ss);
 
       if (ps.status === 'Active' && ps.pixelId) {
         PixelService.initializeBrowserPixel(ps.pixelId);
@@ -313,6 +317,11 @@ const App: React.FC = () => {
     setView('LANDING');
   };
 
+  const handleUpdateStoreSettings = async (settings: StoreSettings) => {
+    await api.saveStoreSettings(settings);
+    setStoreSettings(settings);
+  };
+
   const handleUpdateCourierSettings = async (settings: CourierSettings) => {
     await api.saveCourierSettings(settings);
     setCourierSettings(settings);
@@ -380,7 +389,7 @@ const App: React.FC = () => {
               onDelete={deleteProduct}
               onUpdateOrder={updateOrder}
               onUpdateUser={updateUser}
-              onUpdateSettings={setStoreSettings}
+              onUpdateSettings={handleUpdateStoreSettings}
               onUpdateCourierSettings={handleUpdateCourierSettings}
               onUpdatePixelSettings={handleUpdatePixelSettings}
               onUpdateTwoFactorSettings={handleUpdateTwoFactorSettings}
@@ -398,6 +407,7 @@ const App: React.FC = () => {
             users={users}
             orders={orders}
             wishlist={wishlist}
+            storeSettings={storeSettings}
             onViewProduct={(p) => { setSelectedProduct(p); setView('DETAIL', p.id); }}
             onPlaceOrder={placeOrder}
             onUpdateCartItem={updateCartItem}

@@ -107,6 +107,8 @@ export interface StoreSettings {
   currency: string;
   taxPercentage: number;
   shippingFee: number;
+  whatsappNumber?: string;
+  whatsappOrderLink?: string;
 }
 
 export type ViewState = 'LANDING' | 'DETAIL' | 'ADMIN' | 'USER';
