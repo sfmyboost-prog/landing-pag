@@ -268,7 +268,7 @@ const App: React.FC = () => {
     };
     
     await api.createOrder(newOrder);
-    setOrders(prev => [newOrder, ...prev]);
+    // Note: No need to manually setOrders here as api.createOrder() triggers subscription update
     PixelService.trackPurchase(newOrder, pixelSettings);
     
     clearCart();

@@ -1,6 +1,7 @@
 
 import { Product, Category, Order, User, StoreSettings, CourierSettings, PixelSettings, TwoFactorSettings } from './types';
 import { INITIAL_PRODUCTS } from './constants';
+import { supabase } from './supabaseClient';
 
 interface Database {
   products: Product[];
@@ -43,6 +44,74 @@ const DEFAULT_TWO_FACTOR_SETTINGS: TwoFactorSettings = {
   secret: ''
 };
 
+// Mappers for Supabase (snake_case DB <-> camelCase App)
+const mapSupabaseToOrder = (row: any): Order => {
+  // Handle new schema (first_name, last_name) or old schema (customer_name)
+  const fullName = row.first_name 
+    ? `${row.first_name} ${row.last_name || ''}`.trim()
+    : (row.customer_name || '');
+
+  return {
+    id: row.id,
+    customerName: fullName,
+    customerEmail: row.email || row.customer_email || '',
+    customerPhone: row.phone || row.customer_phone || '',
+    customerAddress: row.street_address || row.customer_address || '',
+    customerLocation: row.city || row.customer_location || '',
+    customerZipCode: row.zip_code || row.customer_zip_code || '',
+    customerCourierPreference: row.customer_courier_preference as any,
+    items: row.items || [], // Assumes JSON column 'items' is used
+    totalPrice: Number(row.total_amount || row.total_price) || 0,
+    paymentStatus: row.payment_status as any,
+    orderStatus: row.order_status as any,
+    timestamp: row.created_at ? new Date(row.created_at) : new Date(),
+    courierName: row.courier_name as any,
+    courierTrackingId: row.courier_tracking_id,
+    customerNotes: row.customer_notes
+  };
+};
+
+const mapOrderToSupabase = (order: Order): any => {
+  // Split name for new columns, keeping backward compatibility if needed
+  const nameParts = order.customerName.split(' ');
+  const firstName = nameParts[0] || '';
+  const lastName = nameParts.slice(1).join(' ') || '';
+
+  // Generate product name summary string
+  const productNameSummary = order.items.map(i => `${i.product.name} (x${i.quantity})`).join(', ');
+
+  return {
+    id: order.id,
+    
+    // New Schema Fields
+    first_name: firstName,
+    last_name: lastName,
+    email: order.customerEmail,
+    phone: order.customerPhone,
+    street_address: order.customerAddress,
+    city: order.customerLocation,
+    zip_code: order.customerZipCode,
+    product_name: productNameSummary,
+    total_amount: order.totalPrice,
+    
+    // Maintain complex items structure in JSON column
+    items: order.items,
+    
+    // App status fields
+    payment_status: order.paymentStatus,
+    order_status: order.orderStatus,
+    created_at: order.timestamp.toISOString(),
+    
+    // Courier info
+    courier_name: order.courierName,
+    courier_tracking_id: order.courierTrackingId,
+    customer_notes: order.customerNotes,
+
+    // Legacy fields for backward compatibility if table wasn't fully migrated (Optional)
+    customer_name: order.customerName,
+  };
+};
+
 class BackendAPI {
   private db: Database;
   private listeners: ((type: string, data: any) => void)[] = [];
@@ -55,7 +124,6 @@ class BackendAPI {
 
         // --- DATA SYNC ---
         // Force update products with IDs from INITIAL_PRODUCTS to use the latest data from constants.ts
-        // This ensures new images/descriptions defined in code are reflected even if DB is cached.
         this.db.products = this.db.products.map(p => {
           const fresh = INITIAL_PRODUCTS.find(ip => ip.id === p.id);
           if (fresh) {
@@ -77,7 +145,6 @@ class BackendAPI {
         if (!this.db.twoFactorSettings) this.db.twoFactorSettings = DEFAULT_TWO_FACTOR_SETTINGS;
         if (!this.db.notifications) this.db.notifications = [];
         
-        // Save back the synced data immediately
         this.save();
       } catch (e) {
         this.db = this.initializeDb();
@@ -85,6 +152,52 @@ class BackendAPI {
     } else {
       this.db = this.initializeDb();
       this.save();
+    }
+
+    // Initialize Realtime Subscription
+    this.initRealtime();
+  }
+
+  private initRealtime() {
+    supabase
+      .channel('public:orders')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+        this.handleRealtimeEvent(payload);
+      })
+      .subscribe();
+  }
+
+  private handleRealtimeEvent(payload: any) {
+    if (payload.eventType === 'INSERT') {
+       const newOrder = mapSupabaseToOrder(payload.new);
+       // Avoid duplicates if we already added it via optimistic update
+       const exists = this.db.orders.find(o => o.id === newOrder.id);
+       if (!exists) {
+          this.db.orders.unshift(newOrder);
+          // Sort to ensure order
+          this.db.orders.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+          this.save();
+          this.notify('orders', this.db.orders);
+          
+          // Add Notification for new remote orders
+          const notif = {
+              id: Date.now().toString(),
+              title: 'New Order Received',
+              message: `Order #${newOrder.id} from ${newOrder.customerName} - TK${newOrder.totalPrice}`,
+              timestamp: new Date(),
+              read: false
+          };
+          this.db.notifications.unshift(notif);
+          this.notify('notifications', this.db.notifications);
+       }
+    } else if (payload.eventType === 'UPDATE') {
+       const updatedOrder = mapSupabaseToOrder(payload.new);
+       const index = this.db.orders.findIndex(o => o.id === updatedOrder.id);
+       if (index !== -1) {
+          this.db.orders[index] = updatedOrder;
+          this.save();
+          this.notify('orders', this.db.orders);
+       }
     }
   }
 
@@ -159,10 +272,35 @@ class BackendAPI {
     this.notify('categories', this.db.categories);
   }
 
-  // Orders
-  async getOrders(): Promise<Order[]> { return [...this.db.orders]; }
+  // Orders - Connected to Supabase
+  async getOrders(): Promise<Order[]> { 
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Supabase getOrders Error:', error);
+        return [...this.db.orders];
+      }
+
+      if (data) {
+        this.db.orders = data.map(mapSupabaseToOrder);
+        this.save();
+        this.notify('orders', this.db.orders);
+      }
+    } catch (err) {
+      console.error('Supabase Connection Error:', err);
+    }
+    return [...this.db.orders]; 
+  }
+
   async createOrder(order: Order): Promise<void> {
+    // Optimistic Update
     this.db.orders.unshift(order);
+    this.save();
+    this.notify('orders', this.db.orders);
     
     // Add Notification
     const notif = {
@@ -173,17 +311,49 @@ class BackendAPI {
         read: false
     };
     this.db.notifications.unshift(notif);
-
-    this.save();
-    this.notify('orders', this.db.orders);
     this.notify('notifications', this.db.notifications);
+
+    // Sync to Supabase
+    try {
+      const payload = mapOrderToSupabase(order);
+      const { error } = await supabase.from('orders').insert([payload]);
+      
+      if (error) throw error;
+      
+    } catch (err) {
+      console.error('Supabase Create Exception:', err);
+      // Rollback optimistic update on failure
+      this.db.orders = this.db.orders.filter(o => o.id !== order.id);
+      this.save();
+      this.notify('orders', this.db.orders);
+      // Re-throw so UI knows it failed
+      throw err;
+    }
   }
+
   async updateOrder(order: Order): Promise<void> {
     const idx = this.db.orders.findIndex(o => o.id === order.id);
     if (idx >= 0) {
       this.db.orders[idx] = order;
       this.save();
       this.notify('orders', this.db.orders);
+    }
+
+    // Sync to Supabase
+    try {
+      const payload = mapOrderToSupabase(order);
+      // Remove created_at from update payload to rely on existing timestamp or avoid conflict
+      const { created_at, ...updateData } = payload;
+      const { error } = await supabase
+        .from('orders')
+        .update(updateData)
+        .eq('id', order.id);
+
+      if (error) {
+        console.error('Supabase Update Order Error:', error);
+      }
+    } catch (err) {
+      console.error('Supabase Update Exception:', err);
     }
   }
 

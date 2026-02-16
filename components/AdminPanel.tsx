@@ -27,6 +27,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [showNotifications, setShowNotifications] = useState(false);
   const [globalSearch, setGlobalSearch] = useState('');
   const [searchResults, setSearchResults] = useState<{orders: Order[], products: Product[], users: User[]} | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Sub-states
   const [courierTarget, setCourierTarget] = useState<Order | null>(null);
@@ -83,8 +84,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setUnreadCount(notifs.filter((n: any) => !n.read).length);
   };
 
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await api.getOrders(); // Fetches fresh from Supabase
+      await refreshDashboard();
+      setToast({ message: 'Data Refreshed Successfully', type: 'success' });
+    } catch (e) {
+      setToast({ message: 'Failed to refresh data', type: 'error' });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   useEffect(() => {
-    refreshDashboard();
+    // Initial fetch on mount to ensure freshness for admin session
+    api.getOrders().then(() => refreshDashboard());
+    
     setLocalOrders(orders);
     setLocalProducts(products);
     setLocalStoreSettings(storeSettings);
@@ -93,7 +109,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       if (dataType === 'orders') {
         setLocalOrders([...data]);
         refreshDashboard();
-        setToast({ message: 'New Order Received! Dashboard Updated.', type: 'success' });
+        setToast({ message: 'New Order Received!', type: 'success' });
       } else if (dataType === 'products') {
         setLocalProducts([...data]);
       } else if (dataType === 'notifications') {
@@ -491,6 +507,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       </div>
 
       <div className="flex items-center gap-6">
+        <button 
+           onClick={handleManualRefresh}
+           className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-colors font-bold text-xs"
+        >
+          <svg className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          {isRefreshing ? 'Refreshing...' : 'Refresh Data'}
+        </button>
+
         {/* Notification Bell */}
         <div className="relative">
           <button onClick={() => setShowNotifications(!showNotifications)} className="relative p-2 text-gray-400 hover:text-indigo-600 transition-colors">
@@ -730,6 +754,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     </div>
   );
 
+  // ... (keeping other render methods unchanged as they don't affect logic) ...
   const renderProductOptions = () => (
     <div className="space-y-6 animate-fadeIn">
       <div className="flex justify-between items-center">
@@ -802,7 +827,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
      <div className="animate-fadeIn">
        <h3 className="text-2xl font-bold text-gray-900 mb-6">Bulk Courier Dispatch</h3>
        <p className="text-gray-500 mb-8">Select orders to bulk dispatch via your configured courier services.</p>
-       {/* Reusing orders table for now, in a real app this would have selection checkboxes */}
        {renderOrders()}
      </div>
   );
@@ -1011,7 +1035,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
       </div>
 
-      {/* Social & Communication Settings (The New Area) */}
+      {/* Social & Communication Settings */}
       <div className="bg-white p-10 rounded-3xl border border-gray-100 shadow-sm animate-fadeIn">
          <div className="mb-8">
            <h3 className="text-2xl font-black text-gray-900">Social & Communication</h3>

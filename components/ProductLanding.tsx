@@ -20,7 +20,7 @@ const REVIEWS = [
   { id: 5, name: "Ayesha Siddiqua", rating: 4, date: "1 week ago", comment: "Good for daily use. Keeps the scalp clean and dandruff free." },
 ];
 
-const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, onProductClick, onOrderNow, storeSettings }) => {
+const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, otherProducts, onProductClick, onOrderNow, storeSettings }) => {
   const [showReviews, setShowReviews] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -245,6 +245,55 @@ const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, onProductC
            ))}
         </div>
       </section>
+
+      {/* Other Products Section - Added as requested */}
+      {otherProducts.length > 0 && (
+        <section className="py-16 bg-white border-b border-gray-50">
+          <div className="max-w-7xl mx-auto px-4 md:px-8">
+            <div className="mb-10 text-center md:text-left">
+              <span className="text-indigo-600 font-black tracking-widest uppercase text-xs mb-2 block">Our Collection</span>
+              <h2 className="text-3xl font-black text-gray-900 tracking-tight">More from us</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+              {otherProducts.map((product) => (
+                <div 
+                  key={product.id} 
+                  className="group bg-white rounded-3xl border border-gray-100 overflow-hidden hover:shadow-2xl hover:shadow-indigo-100/50 transition-all duration-300 cursor-pointer"
+                  onClick={() => onProductClick(product)}
+                >
+                  <div className="aspect-[4/3] bg-gray-100 relative overflow-hidden">
+                    <img 
+                      src={product.images[0]} 
+                      alt={product.name} 
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      onError={handleImageError}
+                    />
+                    {product.discountPercentage && (
+                      <div className="absolute top-4 left-4 bg-red-500 text-white text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">
+                        -{product.discountPercentage}%
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-6">
+                    <h3 className="font-bold text-gray-900 text-lg mb-2 group-hover:text-indigo-600 transition-colors">{product.name}</h3>
+                    <p className="text-sm text-gray-500 line-clamp-2 mb-4">{product.shortDescription || product.description}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="font-black text-xl text-gray-900">TK {product.price.toLocaleString()}</span>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); onOrderNow(product); }}
+                        className="w-10 h-10 bg-gray-900 rounded-full flex items-center justify-center text-white hover:bg-indigo-600 transition-colors"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Supabase Products Section */}
       <SupabaseProductGrid />
