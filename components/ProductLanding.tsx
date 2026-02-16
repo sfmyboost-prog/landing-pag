@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Product } from '../types';
+import SupabaseProductGrid from './SupabaseProductGrid';
 
 interface ProductLandingProps {
   mainProduct: Product;
@@ -83,20 +84,20 @@ const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, onProductC
       <section className="relative min-h-[85vh] flex items-center bg-[#F8F9FB] overflow-hidden pt-6 md:pt-10">
         {/* Background Elements */}
         <div className="absolute inset-0 pointer-events-none">
-           <div className="absolute top-0 right-0 w-[50vw] h-[50vw] bg-indigo-200/20 rounded-full blur-[120px] translate-x-1/3 -translate-y-1/3"></div>
-           <div className="absolute bottom-0 left-0 w-[40vw] h-[40vw] bg-purple-200/20 rounded-full blur-[100px] -translate-x-1/3 translate-y-1/3"></div>
+           <div className="absolute top-0 right-0 w-[50vw] h-[50vw] bg-emerald-200/20 rounded-full blur-[120px] translate-x-1/3 -translate-y-1/3"></div>
+           <div className="absolute bottom-0 left-0 w-[40vw] h-[40vw] bg-teal-200/20 rounded-full blur-[100px] -translate-x-1/3 translate-y-1/3"></div>
         </div>
 
         <div className="max-w-7xl mx-auto px-4 md:px-8 lg:px-8 w-full relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center">
           
           {/* Text Content */}
           <div className="lg:col-span-6 flex flex-col justify-center order-2 lg:order-1">
-            <div className="inline-flex items-center gap-2 self-start bg-white border border-indigo-50 px-3 py-1.5 md:px-4 md:py-2 rounded-full shadow-sm mb-6 md:mb-8 animate-fadeIn">
+            <div className="inline-flex items-center gap-2 self-start bg-white border border-emerald-50 px-3 py-1.5 md:px-4 md:py-2 rounded-full shadow-sm mb-6 md:mb-8 animate-fadeIn">
               <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-600"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-600"></span>
               </span>
-              <span className="text-[10px] md:text-xs font-black text-indigo-900 uppercase tracking-widest">Featured Drop</span>
+              <span className="text-[10px] md:text-xs font-black text-emerald-900 uppercase tracking-widest">Featured Drop</span>
             </div>
 
             <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-gray-900 leading-[1.1] mb-4 md:mb-6 tracking-tight">
@@ -178,7 +179,7 @@ const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, onProductC
              { title: 'Secure Pay', desc: 'COD & Digital Payment', icon: '🔒' }
            ].map((item, i) => (
              <div key={i} className="flex items-center gap-3 md:gap-4 group">
-               <div className="w-10 h-10 md:w-12 md:h-12 bg-gray-50 rounded-xl md:rounded-2xl flex items-center justify-center text-xl md:text-2xl group-hover:bg-indigo-50 group-hover:scale-110 transition-all">{item.icon}</div>
+               <div className="w-10 h-10 md:w-12 md:h-12 bg-gray-50 rounded-xl md:rounded-2xl flex items-center justify-center text-xl md:text-2xl group-hover:bg-emerald-50 group-hover:scale-110 transition-all">{item.icon}</div>
                <div>
                  <h4 className="font-black text-gray-900 text-xs md:text-sm uppercase tracking-wider">{item.title}</h4>
                  <p className="text-[10px] md:text-xs text-gray-500 font-medium">{item.desc}</p>
@@ -187,6 +188,9 @@ const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, onProductC
            ))}
         </div>
       </section>
+
+      {/* Supabase Products Section */}
+      <SupabaseProductGrid />
       
       <style>{`
         @keyframes scaleIn {

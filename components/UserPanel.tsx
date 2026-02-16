@@ -36,6 +36,11 @@ const CheckoutProductVisual: React.FC<{
     return () => clearInterval(interval);
   }, [item.product.images.length, activeImageIndex, isZoomed]);
 
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    e.currentTarget.src = 'https://via.placeholder.com/600x600?text=Image+Not+Found';
+    e.currentTarget.onerror = null; // Prevent infinite loop
+  };
+
   return (
     <div className="flex flex-col gap-6 md:gap-8 animate-fadeIn">
       {/* Zoom Overlay */}
@@ -48,6 +53,7 @@ const CheckoutProductVisual: React.FC<{
             src={item.product.images[activeImageIndex]} 
             alt={item.product.name} 
             className="w-full h-full object-contain animate-scaleIn"
+            onError={handleImageError}
           />
         </div>
       )}
@@ -93,6 +99,7 @@ const CheckoutProductVisual: React.FC<{
                 src={img} 
                 className="max-h-full max-w-full object-contain" 
                 alt={`${item.product.name} view ${idx + 1}`} 
+                onError={handleImageError}
               />
             </div>
           ))}
@@ -114,7 +121,15 @@ const CheckoutProductVisual: React.FC<{
               onClick={() => setActiveImageIndex(imgIdx)}
               className={`relative flex-shrink-0 w-14 h-14 md:w-20 md:h-20 lg:w-24 lg:h-24 rounded-[12px] md:rounded-[20px] lg:rounded-[24px] overflow-hidden bg-white border-2 transition-all hover:scale-105 ${activeImageIndex === imgIdx ? 'border-[#5844FF] shadow-lg shadow-[#5844FF]/20' : 'border-gray-100 opacity-60'}`}
             >
-              <img src={img} className="w-full h-full object-cover" alt={`${item.product.name} thumb ${imgIdx}`} />
+              <img 
+                src={img} 
+                className="w-full h-full object-cover" 
+                alt={`${item.product.name} thumb ${imgIdx}`} 
+                onError={(e) => {
+                  e.currentTarget.src = 'https://via.placeholder.com/100x100?text=No+Img';
+                  e.currentTarget.onerror = null;
+                }}
+              />
               {activeImageIndex === imgIdx && (
                 <div className="absolute inset-0 border-2 md:border-4 border-[#5844FF] rounded-[12px] md:rounded-[20px] lg:rounded-[24px] pointer-events-none" />
               )}
@@ -408,11 +423,6 @@ const UserPanel: React.FC<UserPanelProps> = ({
                   <span>WhatsApp Message</span>
                 </a>
               )}
-              
-              <p className="text-[9px] md:text-[10px] text-gray-500 text-center mt-6 md:mt-8 uppercase font-bold tracking-widest leading-loose">
-                SECURE CHECKOUT POWERED BY DATAFLOW<br/>
-                YOUR DATA IS PROTECTED
-              </p>
             </div>
           </div>
         </div>

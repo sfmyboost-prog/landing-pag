@@ -19,7 +19,7 @@ const DEFAULT_STORE_SETTINGS: StoreSettings = {
   currency: 'BDT',
   taxPercentage: 0,
   shippingFee: 60,
-  whatsappNumber: '+8801700000000',
+  whatsappNumber: '+8801911251608',
   whatsappOrderLink: ''
 };
 
@@ -51,6 +51,23 @@ class BackendAPI {
     if (saved) {
       try {
         this.db = JSON.parse(saved);
+
+        // --- DATA SYNC ---
+        // Force update products with IDs from INITIAL_PRODUCTS to use the latest data from constants.ts
+        // This ensures new images/descriptions defined in code are reflected even if DB is cached.
+        this.db.products = this.db.products.map(p => {
+          const fresh = INITIAL_PRODUCTS.find(ip => ip.id === p.id);
+          if (fresh) {
+             return { 
+               ...fresh, 
+               stock: p.stock,
+               isActive: p.isActive,
+               isMain: p.isMain 
+             };
+          }
+          return p;
+        });
+
         // Ensure defaults for new fields if loading from old DB structure
         if (!this.db.categories) this.db.categories = [];
         if (!this.db.storeSettings) this.db.storeSettings = DEFAULT_STORE_SETTINGS;
@@ -58,6 +75,9 @@ class BackendAPI {
         if (!this.db.pixelSettings) this.db.pixelSettings = DEFAULT_PIXEL_SETTINGS;
         if (!this.db.twoFactorSettings) this.db.twoFactorSettings = DEFAULT_TWO_FACTOR_SETTINGS;
         if (!this.db.notifications) this.db.notifications = [];
+        
+        // Save back the synced data immediately
+        this.save();
       } catch (e) {
         this.db = this.initializeDb();
       }
