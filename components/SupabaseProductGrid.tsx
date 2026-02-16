@@ -44,6 +44,11 @@ const SupabaseProductGrid: React.FC = () => {
     fetchProducts();
   }, []);
 
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    e.currentTarget.src = 'https://via.placeholder.com/400x600?text=Unavailable';
+    e.currentTarget.onerror = null;
+  };
+
   if (loading) {
     return (
       <div className="w-full py-20 bg-white border-t border-gray-50 flex justify-center items-center">
@@ -88,6 +93,7 @@ const SupabaseProductGrid: React.FC = () => {
                   alt={product.title}
                   className="w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-105"
                   loading="lazy"
+                  onError={handleImageError}
                 />
                 
                 {/* Overlay gradient */}

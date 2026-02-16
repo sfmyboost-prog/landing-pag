@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Product } from '../types';
 import SupabaseProductGrid from './SupabaseProductGrid';
 
@@ -21,6 +21,23 @@ const REVIEWS = [
 
 const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, onProductClick, onOrderNow }) => {
   const [showReviews, setShowReviews] = useState(false);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+    setIsExpanded(false);
+  }, [mainProduct.id]);
+
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    e.currentTarget.src = 'https://via.placeholder.com/800x800?text=Product+Image+Unavailable';
+    e.currentTarget.onerror = null;
+  };
+
+  const handleThumbError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    e.currentTarget.src = 'https://via.placeholder.com/100x100?text=NA';
+    e.currentTarget.onerror = null;
+  };
 
   return (
     <div className="animate-fadeIn pb-20">
@@ -104,8 +121,16 @@ const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, onProductC
               {mainProduct.name}
             </h1>
             
-            <div className="text-base md:text-lg text-gray-500 mb-6 md:mb-8 leading-relaxed max-w-lg font-medium whitespace-pre-wrap">
-              {mainProduct.description.substring(0, 200)}...
+            <div className="relative mb-6 md:mb-8 max-w-lg">
+              <div className={`text-base md:text-lg text-gray-500 leading-relaxed font-medium whitespace-pre-line ${!isExpanded ? 'line-clamp-6' : ''}`}>
+                {mainProduct.description}
+              </div>
+              <button 
+                onClick={() => setIsExpanded(!isExpanded)} 
+                className="text-indigo-600 font-bold text-sm mt-2 hover:underline"
+              >
+                {isExpanded ? 'Show Less' : 'Read More'}
+              </button>
             </div>
 
             <div className="flex items-end gap-4 md:gap-6 mb-8 md:mb-10 border-b border-gray-200 pb-6 md:pb-8">
@@ -149,9 +174,10 @@ const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, onProductC
                className="relative aspect-[4/5] lg:aspect-square bg-white rounded-[32px] md:rounded-[40px] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] overflow-hidden group cursor-pointer"
              >
                 <img 
-                  src={mainProduct.images[0]} 
+                  src={mainProduct.images[activeImageIndex]} 
                   alt={mainProduct.name}
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  onError={handleImageError}
                 />
                 
                 {/* Floating Badge (Clickable Review Trigger) */}
@@ -164,6 +190,24 @@ const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, onProductC
                    <span className="text-xs md:text-sm font-black text-gray-900 mt-1">{mainProduct.rating}/5</span>
                    <span className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-wider underline decoration-gray-300 underline-offset-2">{mainProduct.reviewCount} Reviews</span>
                 </div>
+             </div>
+             
+             {/* Thumbnails */}
+             <div className="flex gap-3 md:gap-4 mt-6 overflow-x-auto pb-2 no-scrollbar px-1 justify-center lg:justify-start">
+                {mainProduct.images.map((img, idx) => (
+                   <button 
+                     key={idx}
+                     onClick={(e) => { e.stopPropagation(); setActiveImageIndex(idx); }}
+                     className={`relative w-16 h-16 md:w-20 md:h-20 rounded-2xl overflow-hidden border-2 transition-all flex-shrink-0 ${activeImageIndex === idx ? 'border-gray-900 ring-2 ring-gray-100' : 'border-transparent opacity-70 hover:opacity-100 hover:scale-105'}`}
+                   >
+                     <img 
+                       src={img} 
+                       className="w-full h-full object-cover" 
+                       alt={`Thumbnail ${idx + 1}`} 
+                       onError={handleThumbError}
+                     />
+                   </button>
+                ))}
              </div>
           </div>
         </div>

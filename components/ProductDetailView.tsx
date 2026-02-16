@@ -21,6 +21,7 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({
   const [selectedSize, setSelectedSize] = useState(product.sizes[0]);
   const [selectedColor, setSelectedColor] = useState(product.colors[0]);
   const [quantity, setQuantity] = useState(1);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   const handleOrderNow = () => {
     onOrderNow({
@@ -37,6 +38,16 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({
 
   const handlePrevImage = () => {
     setSelectedImage((prev) => (prev - 1 + product.images.length) % product.images.length);
+  };
+
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    e.currentTarget.src = 'https://via.placeholder.com/800x800?text=Product+Image+Unavailable';
+    e.currentTarget.onerror = null;
+  };
+
+  const handleThumbError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    e.currentTarget.src = 'https://via.placeholder.com/100x100?text=NA';
+    e.currentTarget.onerror = null;
   };
 
   return (
@@ -57,6 +68,7 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({
               src={product.images[selectedImage]} 
               alt={product.name}
               className="w-full h-full object-cover animate-scaleIn"
+              onError={handleImageError}
             />
             {/* Navigation Arrows */}
             <div className="absolute inset-0 flex items-center justify-between p-4 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -77,7 +89,12 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                   selectedImage === idx ? 'border-indigo-600 ring-2 ring-indigo-100' : 'border-transparent opacity-60 hover:opacity-100'
                 }`}
               >
-                <img src={img} alt={`Thumb ${idx}`} className="w-full h-full object-cover" />
+                <img 
+                  src={img} 
+                  alt={`Thumb ${idx}`} 
+                  className="w-full h-full object-cover" 
+                  onError={handleThumbError}
+                />
               </button>
             ))}
           </div>
@@ -110,9 +127,17 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({
           <div className="space-y-6 mb-10">
             <div>
               <h4 className="text-gray-900 font-bold mb-2 uppercase text-[10px] tracking-widest text-gray-400">Description</h4>
-              <p className="text-gray-600 leading-relaxed text-sm md:text-base">
+              <p className={`text-gray-600 leading-relaxed text-sm md:text-base whitespace-pre-line ${!isDescriptionExpanded ? 'line-clamp-6' : ''}`}>
                 {product.description}
               </p>
+              {product.description.length > 200 && (
+                <button 
+                  onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)} 
+                  className="text-indigo-600 font-bold text-sm mt-2 hover:underline"
+                >
+                  {isDescriptionExpanded ? 'Show Less' : 'Read More'}
+                </button>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
