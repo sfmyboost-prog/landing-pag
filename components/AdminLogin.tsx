@@ -9,7 +9,7 @@ interface AdminLoginProps {
 }
 
 const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess, onBack }) => {
-  const [email, setEmail] = useState('admin@dataflow.com');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authCode, setAuthCode] = useState('');
   const [error, setError] = useState('');
@@ -49,7 +49,7 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLoginSuccess, onBack }) => {
         onLoginSuccess();
       }
     } else {
-      setError('Invalid administrator credentials. Try: admin123');
+      setError('Invalid administrator credentials.');
     }
   };
 
