@@ -9,23 +9,93 @@ interface ProductLandingProps {
   onOrderNow: (p: Product) => void;
 }
 
+// Mock Reviews Data generated based on provided "Nature Shampoo Bar" details
+const REVIEWS = [
+  { id: 1, name: "Fatima Rahman", rating: 5, date: "2 days ago", comment: "Amazing product! My hair feels so soft and strong. The herbal scent is lovely." },
+  { id: 2, name: "Sadia Islam", rating: 5, date: "3 days ago", comment: "খুবই ভালো কাজ করে। চুল পড়া অনেক কমেছে। (Works really well. Hair fall reduced a lot.)" },
+  { id: 3, name: "Tanvir Ahmed", rating: 5, date: "4 days ago", comment: "Best organic shampoo I've used. No harsh chemicals, just pure nature." },
+  { id: 4, name: "Nusrat Jahan", rating: 5, date: "5 days ago", comment: "Cacumen Biotae magic! My roots feel stronger than ever." },
+  { id: 5, name: "Ayesha Siddiqua", rating: 4, date: "1 week ago", comment: "Good for daily use. Keeps the scalp clean and dandruff free." },
+  { id: 6, name: "Rashedul Karim", rating: 5, date: "1 week ago", comment: "Great for travel. No plastic waste and effective cleaning." },
+  { id: 7, name: "Farhana Akter", rating: 5, date: "1 week ago", comment: "চুল এখন অনেক বেশি ঘন মনে হয়। ধন্যবাদ! (Hair feels much thicker now. Thanks!)" },
+  { id: 8, name: "Mehedi Hasan", rating: 5, date: "2 weeks ago", comment: "Finally found something that stopped my hair fall. Usman Grass works wonders." },
+  { id: 9, name: "Sumaiya Khan", rating: 5, date: "2 weeks ago", comment: "Leaves hair shiny and vibrant without conditioner." },
+  { id: 10, name: "Rubel Hossain", rating: 5, date: "2 weeks ago", comment: "প্রথমবার ব্যবহার করলাম, অসাধারণ রেজাল্ট। (Used for the first time, amazing result.)" },
+  { id: 11, name: "Jannatul Ferdous", rating: 5, date: "2 weeks ago", comment: "Love the natural herbal extract smell. Very refreshing." },
+  { id: 12, name: "Arif Chowdhury", rating: 4, date: "3 weeks ago", comment: "Good product. A bit different from liquid shampoo but better for hair." },
+  { id: 13, name: "Sharmin Sultana", rating: 5, date: "3 weeks ago", comment: "রুক্ষ চুল এখন অনেক সফট। (Rough hair is now very soft.)" },
+  { id: 14, name: "Imran Khan", rating: 5, date: "3 weeks ago", comment: "Highly effective against dandruff. Saw results in 3 washes." },
+  { id: 15, name: "Tasnim Jara", rating: 5, date: "1 month ago", comment: "Completely natural and chemical free. Safe for the whole family." },
+  { id: 16, name: "Rakib Hassan", rating: 5, date: "1 month ago", comment: "Best value for money. One bar lasts a long time." },
+  { id: 17, name: "Sabrina Momtaz", rating: 5, date: "1 month ago", comment: "My hair texture has improved significantly." },
+  { id: 18, name: "Fahim Uddin", rating: 5, date: "1 month ago", comment: "প্রাকৃতিক উপাদানে তৈরি তাই কোনো পার্শ্বপ্রতিক্রিয়া নেই। (Made of natural ingredients so no side effects.)" },
+  { id: 19, name: "Mahiya Mahi", rating: 5, date: "1 month ago", comment: "Simply the best shampoo bar in Bangladesh." },
+  { id: 20, name: "Sajidul Islam", rating: 4, date: "1 month ago", comment: "Keeps hair oil-free for longer periods." },
+  { id: 21, name: "Nazmun Nahar", rating: 5, date: "2 months ago", comment: "Highly recommended for hair regrowth." },
+  { id: 22, name: "Kamrul Hasan", rating: 5, date: "2 months ago", comment: "চুলের গোড়া শক্ত করে। (Strengthens hair roots.)" },
+  { id: 23, name: "Laila Yeasmin", rating: 5, date: "2 months ago", comment: "Eco-friendly and hair-friendly. What more do you need?" },
+  { id: 24, name: "Zubayer Ahmed", rating: 5, date: "2 months ago", comment: "Excellent product quality. Fast delivery too." }
+];
+
 const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, otherProducts, onProductClick, onOrderNow }) => {
-  const [isZoomed, setIsZoomed] = useState(false);
   const activeOtherProducts = otherProducts.filter(p => p.isActive !== false);
+  const [showReviews, setShowReviews] = useState(false);
 
   return (
     <div className="animate-fadeIn pb-20">
-      {/* Zoom Overlay */}
-      {isZoomed && (
-        <div 
-          className="fixed inset-0 z-[1000] bg-black flex items-center justify-center cursor-zoom-out transition-all duration-300 p-4"
-          onClick={() => setIsZoomed(false)}
-        >
-          <img 
-            src={mainProduct.images[0]} 
-            alt={mainProduct.name} 
-            className="w-full h-full object-contain animate-scaleIn"
-          />
+      {/* Reviews Modal */}
+      {showReviews && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => setShowReviews(false)}></div>
+          <div className="bg-white rounded-[32px] w-full max-w-2xl max-h-[80vh] shadow-2xl relative z-10 overflow-hidden flex flex-col animate-scaleIn">
+            <div className="p-6 md:p-8 border-b border-gray-100 flex justify-between items-center bg-white sticky top-0 z-20">
+              <div>
+                <h3 className="text-2xl font-black text-gray-900 tracking-tight">Customer Reviews</h3>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="flex text-yellow-400">
+                    {[...Array(5)].map((_, i) => (
+                      <svg key={i} className="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    ))}
+                  </div>
+                  <span className="text-sm font-bold text-gray-500">4.9/5 (24 Reviews)</span>
+                </div>
+              </div>
+              <button onClick={() => setShowReviews(false)} className="w-10 h-10 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-500 transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+            
+            <div className="overflow-y-auto p-6 md:p-8 space-y-6 no-scrollbar">
+              {REVIEWS.map((review) => (
+                <div key={review.id} className="flex gap-4 p-4 rounded-2xl bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                  <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 text-indigo-600 font-black text-sm md:text-base">
+                    {review.name.split(' ').map(n => n[0]).join('').substring(0,2)}
+                  </div>
+                  <div className="flex-grow">
+                    <div className="flex justify-between items-start mb-1">
+                      <h4 className="font-bold text-gray-900 text-sm md:text-base">{review.name}</h4>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{review.date}</span>
+                    </div>
+                    <div className="flex text-yellow-400 mb-2">
+                       {[...Array(5)].map((_, i) => (
+                         <svg key={i} className={`w-3 h-3 ${i < review.rating ? 'fill-current' : 'text-gray-200 fill-current'}`} viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                       ))}
+                    </div>
+                    <p className="text-gray-600 text-sm leading-relaxed">{review.comment}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="p-6 border-t border-gray-100 bg-gray-50/50">
+               <button 
+                 onClick={() => { setShowReviews(false); onOrderNow(mainProduct); }} 
+                 className="w-full bg-[#111827] text-white py-4 rounded-xl font-black text-lg shadow-xl hover:bg-black transition-all"
+               >
+                 Buy Now - TK{mainProduct.price}
+               </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -94,8 +164,7 @@ const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, otherProdu
           {/* Image Content */}
           <div className="lg:col-span-6 relative order-1 lg:order-2">
              <div 
-               className="relative aspect-[4/5] lg:aspect-square bg-white rounded-[32px] md:rounded-[40px] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] overflow-hidden cursor-zoom-in group"
-               onClick={() => setIsZoomed(true)}
+               className="relative aspect-[4/5] lg:aspect-square bg-white rounded-[32px] md:rounded-[40px] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] overflow-hidden group"
              >
                 <img 
                   src={mainProduct.images[0]} 
@@ -103,11 +172,15 @@ const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, otherProdu
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
                 
-                {/* Floating Badge */}
-                <div className="absolute bottom-4 right-4 md:bottom-8 md:right-8 bg-white/90 backdrop-blur-md px-4 py-3 md:px-6 md:py-4 rounded-2xl md:rounded-3xl shadow-lg border border-white/50 flex flex-col items-center animate-bounce" style={{ animationDuration: '3s' }}>
-                   <span className="text-xl md:text-2xl">⭐</span>
+                {/* Floating Badge (Clickable Review Trigger) */}
+                <div 
+                  onClick={() => setShowReviews(true)}
+                  className="absolute bottom-4 right-4 md:bottom-8 md:right-8 bg-white/90 backdrop-blur-md px-4 py-3 md:px-6 md:py-4 rounded-2xl md:rounded-3xl shadow-lg border border-white/50 flex flex-col items-center animate-bounce cursor-pointer hover:bg-white hover:scale-110 transition-all group/badge"
+                  style={{ animationDuration: '3s' }}
+                >
+                   <span className="text-xl md:text-2xl group-hover/badge:scale-125 transition-transform">⭐</span>
                    <span className="text-xs md:text-sm font-black text-gray-900 mt-1">{mainProduct.rating}/5</span>
-                   <span className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-wider">{mainProduct.reviewCount} Reviews</span>
+                   <span className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-wider underline decoration-gray-300 underline-offset-2">{mainProduct.reviewCount} Reviews</span>
                 </div>
              </div>
           </div>
@@ -177,6 +250,19 @@ const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, otherProdu
                 <div className="px-2 pb-2 flex-grow flex flex-col">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{product.category}</p>
                   <h3 className="text-base md:text-lg font-black text-gray-900 mb-2 leading-tight group-hover:text-indigo-600 transition-colors">{product.name}</h3>
+                  
+                  {/* Rating Stars */}
+                  <div className="flex items-center gap-1 mb-3">
+                    <div className="flex text-yellow-400">
+                      {[...Array(5)].map((_, i) => (
+                        <svg key={i} className={`w-3 h-3 ${i < Math.floor(product.rating) ? 'fill-current' : 'text-gray-200 fill-current'}`} viewBox="0 0 20 20">
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                        </svg>
+                      ))}
+                    </div>
+                    <span className="text-[10px] font-bold text-gray-400">({product.reviewCount})</span>
+                  </div>
+
                   <div className="mt-auto flex items-center justify-between">
                     <span className="text-lg md:text-xl font-black text-[#111827]">TK{product.price.toLocaleString()}</span>
                     {product.originalPrice > product.price && (

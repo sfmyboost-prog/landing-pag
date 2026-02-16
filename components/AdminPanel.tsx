@@ -1,39 +1,19 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Product, Order, User, StoreSettings, CourierSettings, PixelSettings, Category } from '../types';
+import { Product, Order, User, StoreSettings, CourierSettings, PixelSettings, Category, TwoFactorSettings, AdminPanelProps } from '../types';
 import { CourierService } from '../CourierService';
 import { PixelService } from '../PixelService';
 import { api } from '../BackendAPI';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { ChartData, ChartOptions } from 'chart.js';
 import 'chart.js/auto';
-
-interface AdminPanelProps {
-  products: Product[];
-  categories: Category[];
-  orders: Order[];
-  users: User[];
-  storeSettings: StoreSettings;
-  courierSettings?: CourierSettings;
-  pixelSettings?: PixelSettings;
-  onUpdate: (p: Product) => void;
-  onAdd: (p: Product) => void;
-  onDelete: (id: string) => void;
-  onUpdateOrder: (o: Order) => void;
-  onUpdateUser: (u: User) => void;
-  onUpdateSettings: (s: StoreSettings) => void;
-  onUpdateCourierSettings?: (s: CourierSettings) => void;
-  onUpdatePixelSettings?: (s: PixelSettings) => void;
-  onAddCategory: (cat: Partial<Category>) => void;
-  onDeleteCategory: (id: string) => void;
-  onUpdateCategory?: (cat: Category) => void;
-  onLogout: () => void;
-}
+import * as QRCode from 'qrcode';
+import * as OTPAuth from 'otpauth';
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ 
-  products, categories, orders, users, storeSettings, courierSettings, pixelSettings,
+  products, categories, orders, users, storeSettings, courierSettings, pixelSettings, twoFactorSettings,
   onUpdate, onAdd, onDelete, onUpdateOrder, onUpdateUser, 
-  onUpdateSettings, onUpdateCourierSettings, onUpdatePixelSettings, onAddCategory, onDeleteCategory, onUpdateCategory, onLogout 
+  onUpdateSettings, onUpdateCourierSettings, onUpdatePixelSettings, onUpdateTwoFactorSettings, onAddCategory, onDeleteCategory, onUpdateCategory, onLogout 
 }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -87,6 +67,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   // Courier Setup States
   const [activeCourierConfig, setActiveCourierConfig] = useState<'pathao' | 'steadfast'>('pathao');
   const [isVerifyingCourier, setIsVerifyingCourier] = useState<string | null>(null);
+
+  // 2FA & System Settings States
+  const [tfaStep, setTfaStep] = useState<'idle' | 'scanning' | 'verifying'>('idle');
+  const [tfaSecret, setTfaSecret] = useState('');
+  const [tfaQrUrl, setTfaQrUrl] = useState('');
+  const [tfaCode, setTfaCode] = useState('');
+  const [localStoreSettings, setLocalStoreSettings] = useState<StoreSettings>(storeSettings);
 
   // --- Realtime Engine & Initialization ---
 
@@ -228,6 +215,77 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     cutout: '75%',
     plugins: {
       legend: { position: 'bottom', labels: { usePointStyle: true, font: { size: 10 } } }
+    }
+  };
+
+  // --- 2FA Logic ---
+
+  const generateSecret = (length = 16) => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    let secret = '';
+    for (let i = 0; i < length; i++) {
+      secret += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return secret;
+  };
+
+  const initiate2FA = async () => {
+    const secret = generateSecret();
+    setTfaSecret(secret);
+    
+    // Create OTPAuth URL
+    const totp = new OTPAuth.TOTP({
+      issuer: 'Dataflow',
+      label: 'Admin',
+      algorithm: 'SHA1',
+      digits: 6,
+      period: 30,
+      secret: secret,
+    });
+    
+    const uri = totp.toString();
+    try {
+      const qrUrl = await QRCode.toDataURL(uri);
+      setTfaQrUrl(qrUrl);
+      setTfaStep('scanning');
+    } catch (err) {
+      setToast({ message: 'Error generating QR Code', type: 'error' });
+    }
+  };
+
+  const verifyAndEnable2FA = () => {
+    const totp = new OTPAuth.TOTP({
+      issuer: 'Dataflow',
+      label: 'Admin',
+      algorithm: 'SHA1',
+      digits: 6,
+      period: 30,
+      secret: tfaSecret,
+    });
+
+    const delta = totp.validate({
+      token: tfaCode,
+      window: 1,
+    });
+
+    if (delta !== null) {
+      if (onUpdateTwoFactorSettings) {
+        onUpdateTwoFactorSettings({ enabled: true, secret: tfaSecret });
+        setToast({ message: '2FA Enabled Successfully!', type: 'success' });
+        setTfaStep('idle');
+        setTfaCode('');
+      }
+    } else {
+      setToast({ message: 'Invalid OTP. Please try again.', type: 'error' });
+    }
+  };
+
+  const disable2FA = () => {
+    if (confirm('Are you sure you want to disable 2FA? This will make your account less secure.')) {
+      if (onUpdateTwoFactorSettings) {
+        onUpdateTwoFactorSettings({ enabled: false, secret: '' });
+        setToast({ message: '2FA Disabled.', type: 'success' });
+      }
     }
   };
 
@@ -1135,6 +1193,129 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     );
   };
 
+  const renderSystemSettings = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-10 animate-fadeIn">
+      {/* General Settings */}
+      <div className="bg-white p-10 rounded-3xl border border-gray-100 shadow-sm flex flex-col h-full">
+        <div className="mb-8">
+           <h3 className="text-2xl font-black text-gray-900">Store Configuration</h3>
+           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">General Application Settings</p>
+        </div>
+        <div className="space-y-6 flex-grow">
+          <div className="space-y-3">
+            <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Store Name</label>
+            <input 
+              value={localStoreSettings.storeName}
+              onChange={e => setLocalStoreSettings({...localStoreSettings, storeName: e.target.value})}
+              className="w-full px-6 py-4.5 bg-gray-50 rounded-2xl border-none outline-none font-bold focus:ring-2 focus:ring-indigo-100"
+            />
+          </div>
+          <div className="space-y-3">
+            <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Currency</label>
+            <input 
+              value={localStoreSettings.currency}
+              onChange={e => setLocalStoreSettings({...localStoreSettings, currency: e.target.value})}
+              className="w-full px-6 py-4.5 bg-gray-50 rounded-2xl border-none outline-none font-bold focus:ring-2 focus:ring-indigo-100"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-3">
+              <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Tax (%)</label>
+              <input 
+                type="number"
+                value={localStoreSettings.taxPercentage}
+                onChange={e => setLocalStoreSettings({...localStoreSettings, taxPercentage: Number(e.target.value)})}
+                className="w-full px-6 py-4.5 bg-gray-50 rounded-2xl border-none outline-none font-bold focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
+            <div className="space-y-3">
+              <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1">Shipping Fee</label>
+              <input 
+                type="number"
+                value={localStoreSettings.shippingFee}
+                onChange={e => setLocalStoreSettings({...localStoreSettings, shippingFee: Number(e.target.value)})}
+                className="w-full px-6 py-4.5 bg-gray-50 rounded-2xl border-none outline-none font-bold focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
+          </div>
+        </div>
+        <button 
+          onClick={() => { onUpdateSettings(localStoreSettings); setToast({message: 'Settings Updated', type: 'success'}); }}
+          className="w-full mt-10 bg-indigo-600 text-white py-5 rounded-[24px] font-black text-lg shadow-xl hover:bg-indigo-700 transition-all"
+        >
+          Save Changes
+        </button>
+      </div>
+
+      {/* 2FA Settings */}
+      <div className="bg-white p-10 rounded-3xl border border-gray-100 shadow-sm flex flex-col h-full">
+        <div className="mb-8">
+           <h3 className="text-2xl font-black text-gray-900">Security</h3>
+           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Two-Factor Authentication</p>
+        </div>
+
+        {twoFactorSettings?.enabled ? (
+          <div className="flex flex-col items-center justify-center flex-grow py-10 space-y-6">
+             <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center">
+               <svg className="w-12 h-12 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+             </div>
+             <div className="text-center">
+               <h4 className="text-xl font-black text-gray-900">2FA is Enabled</h4>
+               <p className="text-sm text-gray-500 max-w-xs mx-auto mt-2">Your account is secured with two-factor authentication.</p>
+             </div>
+             <button 
+               onClick={disable2FA}
+               className="px-8 py-4 bg-red-50 text-red-600 rounded-2xl font-bold uppercase tracking-widest text-xs hover:bg-red-100 transition-colors"
+             >
+               Disable 2FA
+             </button>
+          </div>
+        ) : (
+          <div className="flex-grow flex flex-col">
+            {tfaStep === 'idle' && (
+              <div className="flex flex-col items-center justify-center flex-grow py-6 text-center">
+                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+                  <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                </div>
+                <h4 className="text-lg font-bold text-gray-900 mb-2">Secure Your Account</h4>
+                <p className="text-sm text-gray-500 mb-8 max-w-xs">Add an extra layer of security to your admin account by enabling two-factor authentication.</p>
+                <button 
+                  onClick={initiate2FA}
+                  className="w-full bg-[#111827] text-white py-5 rounded-[24px] font-black text-lg shadow-xl hover:bg-black transition-all"
+                >
+                  Setup 2FA
+                </button>
+              </div>
+            )}
+
+            {tfaStep === 'scanning' && (
+              <div className="flex flex-col items-center flex-grow animate-fadeIn">
+                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Step 1: Scan QR Code</p>
+                 <div className="bg-white p-4 rounded-3xl shadow-lg border border-gray-100 mb-6">
+                   {tfaQrUrl ? <img src={tfaQrUrl} alt="2FA QR" className="w-48 h-48" /> : <div className="w-48 h-48 bg-gray-100 animate-pulse rounded-xl" />}
+                 </div>
+                 <div className="w-full space-y-4">
+                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Step 2: Enter Code</p>
+                   <input 
+                     type="text" 
+                     value={tfaCode}
+                     onChange={e => setTfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                     placeholder="000 000"
+                     className="w-full px-6 py-4.5 bg-gray-50 rounded-2xl border-none outline-none font-bold text-center tracking-[0.5em] text-xl focus:ring-2 focus:ring-indigo-100"
+                   />
+                   <div className="flex gap-4">
+                     <button onClick={() => setTfaStep('idle')} className="flex-1 py-4 text-gray-400 font-bold hover:text-gray-600">Cancel</button>
+                     <button onClick={verifyAndEnable2FA} className="flex-[2] bg-indigo-600 text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-indigo-700">Verify & Enable</button>
+                   </div>
+                 </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex h-screen bg-[#F8F9FB] overflow-hidden font-sans">
       <aside className={`bg-[#111827] text-white transition-all duration-300 flex flex-col ${isSidebarCollapsed ? 'w-20' : 'w-72'}`}>
@@ -1167,6 +1348,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           {activeTab === 'dispatch' && renderCourierDispatch()}
           {activeTab === 'courier_setup' && renderCourierSetup()}
           {activeTab === 'pixel' && renderPixelSetup()}
+          {activeTab === 'settings' && renderSystemSettings()}
         </div>
       </main>
       

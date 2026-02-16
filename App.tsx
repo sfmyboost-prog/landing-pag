@@ -1,6 +1,6 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { ViewState, Product, CartItem, Order, User, StoreSettings, CourierSettings, Category, PixelSettings } from './types';
+import { ViewState, Product, CartItem, Order, User, StoreSettings, CourierSettings, Category, PixelSettings, TwoFactorSettings } from './types';
 import { api } from './BackendAPI';
 import { PixelService } from './PixelService';
 import Navbar from './components/Navbar';
@@ -91,15 +91,20 @@ const App: React.FC = () => {
     currency: 'BDT',
     status: 'Inactive'
   });
+
+  const [twoFactorSettings, setTwoFactorSettings] = useState<TwoFactorSettings>({
+    enabled: false,
+    secret: ''
+  });
   
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [wishlist, setWishlist] = useState<Product[]>([]);
 
-  // Initial Data Fetch
+  // Initial Data Fetch & Realtime Subscriptions
   useEffect(() => {
     const fetchData = async () => {
-      const [p, c, o, u, cs, ps] = await Promise.all([
+      const [p, c, o, u, cs, ps, tfa] = await Promise.all([
         api.getProducts(),
         Promise.resolve([
           { id: '1', name: 'Apparel', isActive: true },
@@ -110,7 +115,8 @@ const App: React.FC = () => {
         api.getOrders(),
         api.getUsers(),
         api.getCourierSettings(),
-        api.getPixelSettings()
+        api.getPixelSettings(),
+        api.getTwoFactorSettings()
       ]);
       setProducts(p);
       setCategories(c);
@@ -118,6 +124,7 @@ const App: React.FC = () => {
       setUsers(u);
       setCourierSettings(cs);
       setPixelSettings(ps);
+      setTwoFactorSettings(tfa);
 
       // Initialize Pixel Tracking if active
       if (ps.status === 'Active' && ps.pixelId) {
@@ -125,6 +132,19 @@ const App: React.FC = () => {
       }
     };
     fetchData();
+
+    // Subscribe to API updates to ensure products added in Admin Panel appear instantly for everyone
+    const unsubscribe = api.subscribe((dataType, data) => {
+      if (dataType === 'products') {
+        setProducts([...data]);
+      } else if (dataType === 'orders') {
+        setOrders([...data]);
+      } else if (dataType === 'users') {
+        setUsers([...data]);
+      }
+    });
+
+    return () => unsubscribe();
   }, [view]);
 
   const mainProduct = products.find(p => p.isMain) || products[0];
@@ -249,17 +269,17 @@ const App: React.FC = () => {
 
   const updateProduct = async (updatedProduct: Product) => {
     await api.saveProduct(updatedProduct);
-    setProducts(prev => prev.map(p => p.id === updatedProduct.id ? updatedProduct : p));
+    // setProducts is removed here because subscription handles it
   };
 
   const addProduct = async (newProduct: Product) => {
     await api.saveProduct(newProduct);
-    setProducts(prev => [newProduct, ...prev]);
+    // setProducts is removed here because subscription handles it
   };
 
   const deleteProduct = async (id: string) => {
     await api.deleteProduct(id);
-    setProducts(prev => prev.filter(p => p.id !== id));
+    // setProducts is removed here because subscription handles it
   };
 
   const updateOrder = async (updatedOrder: Order) => {
@@ -288,6 +308,11 @@ const App: React.FC = () => {
   const handleUpdatePixelSettings = async (settings: PixelSettings) => {
     await api.savePixelSettings(settings);
     setPixelSettings(settings);
+  };
+
+  const handleUpdateTwoFactorSettings = async (settings: TwoFactorSettings) => {
+    await api.saveTwoFactorSettings(settings);
+    setTwoFactorSettings(settings);
   };
 
   return (
@@ -336,6 +361,7 @@ const App: React.FC = () => {
               storeSettings={storeSettings}
               courierSettings={courierSettings}
               pixelSettings={pixelSettings}
+              twoFactorSettings={twoFactorSettings}
               onUpdate={updateProduct} 
               onAdd={addProduct} 
               onDelete={deleteProduct}
@@ -344,6 +370,7 @@ const App: React.FC = () => {
               onUpdateSettings={setStoreSettings}
               onUpdateCourierSettings={handleUpdateCourierSettings}
               onUpdatePixelSettings={handleUpdatePixelSettings}
+              onUpdateTwoFactorSettings={handleUpdateTwoFactorSettings}
               onAddCategory={(cat) => setCategories([...categories, { id: Math.random().toString(36).substr(2, 9), name: cat.name || 'New Category', isActive: cat.isActive ?? true }])}
               onDeleteCategory={(catId) => setCategories(categories.filter(c => c.id !== catId))}
               onUpdateCategory={(updatedCat) => setCategories(categories.map(c => c.id === updatedCat.id ? updatedCat : c))}

@@ -110,3 +110,27 @@ export interface StoreSettings {
 }
 
 export type ViewState = 'LANDING' | 'DETAIL' | 'ADMIN' | 'USER';
+
+export interface AdminPanelProps {
+  products: Product[];
+  categories: Category[];
+  orders: Order[];
+  users: User[];
+  storeSettings: StoreSettings;
+  courierSettings?: CourierSettings;
+  pixelSettings?: PixelSettings;
+  twoFactorSettings?: TwoFactorSettings;
+  onUpdate: (p: Product) => void;
+  onAdd: (p: Product) => void;
+  onDelete: (id: string) => void;
+  onUpdateOrder: (o: Order) => void;
+  onUpdateUser: (u: User) => void;
+  onUpdateSettings: (s: StoreSettings) => void;
+  onUpdateCourierSettings?: (s: CourierSettings) => void;
+  onUpdatePixelSettings?: (s: PixelSettings) => void;
+  onUpdateTwoFactorSettings?: (s: TwoFactorSettings) => void;
+  onAddCategory: (cat: Partial<Category>) => void;
+  onDeleteCategory: (id: string) => void;
+  onUpdateCategory?: (cat: Category) => void;
+  onLogout: () => void;
+}

@@ -3,7 +3,8 @@ import { Product, Order, User, Category, StoreSettings, CourierSettings, PixelSe
 import { INITIAL_PRODUCTS } from './constants';
 import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 
-const DB_KEY = 'elite_commerce_db_clean';
+// Updated Key to ensure new Shampoo product is loaded
+const DB_KEY = 'elite_commerce_db_clean_v3';
 
 // Supabase Configuration from User
 const SUPABASE_URL = 'https://yubfgiermqfsysbyqemx.supabase.co';
@@ -206,8 +207,6 @@ class BackendAPI {
   }
 
   async getOrders(forceRefresh = false): Promise<Order[]> {
-    // Return only local orders (which starts empty)
-    // Historical data from Supabase is ignored for the "Zero" requirement.
     return [...this.db.orders];
   }
 
