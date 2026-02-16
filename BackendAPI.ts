@@ -64,7 +64,7 @@ const DEFAULT_DB: DB = {
   notifications: []
 };
 
-type DataChangeListener = (dataType: 'orders' | 'products' | 'users' | 'notifications', data: any) => void;
+type DataChangeListener = (dataType: 'orders' | 'products' | 'users' | 'notifications' | 'categories', data: any) => void;
 
 class BackendAPI {
   private db: DB;
@@ -86,10 +86,33 @@ class BackendAPI {
     if (!stored) this.save();
     this.supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
     this.initializeRealtime();
+    this.syncInitialData();
   }
 
   private save() {
     localStorage.setItem(DB_KEY, JSON.stringify(this.db));
+  }
+
+  private async syncInitialData() {
+    try {
+      // Sync Products
+      const { data: pData } = await this.supabase.from('products').select('*');
+      if (pData && pData.length > 0) {
+        this.db.products = pData.map(row => this.mapSupabaseProduct(row));
+        this.notifyListeners('products', this.db.products);
+      }
+      
+      // Sync Categories
+      const { data: cData } = await this.supabase.from('categories').select('*');
+      if (cData && cData.length > 0) {
+        this.db.categories = cData.map(row => ({ id: row.id, name: row.name, isActive: row.is_active }));
+        this.notifyListeners('categories', this.db.categories);
+      }
+      
+      this.save();
+    } catch (e) {
+      console.warn('Initial sync failed, using local data', e);
+    }
   }
 
   // --- Realtime Engine ---
@@ -106,7 +129,6 @@ class BackendAPI {
           console.log('[Realtime] Order Update:', payload);
           if (payload.eventType === 'INSERT') {
             const newOrder = this.mapSupabaseOrder(payload.new);
-            // Avoid duplicates just in case
             if (!this.db.orders.some(o => o.id === newOrder.id)) {
                 this.db.orders.unshift(newOrder);
                 this.notifyListeners('orders', this.db.orders);
@@ -130,6 +152,40 @@ class BackendAPI {
           this.save();
         }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'products' },
+        (payload) => {
+          console.log('[Realtime] Product Update:', payload);
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+             const product = this.mapSupabaseProduct(payload.new);
+             const idx = this.db.products.findIndex(p => p.id === product.id);
+             if (idx > -1) this.db.products[idx] = product;
+             else this.db.products.push(product);
+          } else if (payload.eventType === 'DELETE') {
+             this.db.products = this.db.products.filter(p => p.id !== payload.old.id);
+          }
+          this.save();
+          this.notifyListeners('products', this.db.products);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'categories' },
+        (payload) => {
+          console.log('[Realtime] Category Update:', payload);
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+             const cat = { id: payload.new.id, name: payload.new.name, isActive: payload.new.is_active };
+             const idx = this.db.categories.findIndex(c => c.id === cat.id);
+             if (idx > -1) this.db.categories[idx] = cat;
+             else this.db.categories.push(cat);
+          } else if (payload.eventType === 'DELETE') {
+             this.db.categories = this.db.categories.filter(c => c.id !== payload.old.id);
+          }
+          this.save();
+          this.notifyListeners('categories', this.db.categories);
+        }
+      )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
           console.log('[Realtime] Connected to Supabase');
@@ -144,7 +200,7 @@ class BackendAPI {
     };
   }
 
-  private notifyListeners(dataType: 'orders' | 'products' | 'users' | 'notifications', data: any) {
+  private notifyListeners(dataType: 'orders' | 'products' | 'users' | 'notifications' | 'categories', data: any) {
     this.listeners.forEach(l => l(dataType, data));
   }
 
@@ -177,6 +233,60 @@ class BackendAPI {
     };
   }
 
+  private mapSupabaseProduct(row: any): Product {
+    return {
+      id: row.id,
+      name: row.name,
+      price: row.price,
+      originalPrice: row.original_price,
+      rating: row.rating,
+      reviewCount: row.review_count,
+      description: row.description,
+      shortDescription: row.short_description,
+      images: row.images || [],
+      colors: row.colors || [],
+      sizes: row.sizes || [],
+      productId: row.product_id,
+      deliveryRegions: row.delivery_regions || [],
+      category: row.category,
+      isMain: row.is_main,
+      isActive: row.is_active,
+      stock: row.stock,
+      discountPercentage: row.discount_percentage,
+      purchaseCost: row.purchase_cost,
+      internalPrice: row.internal_price,
+      hasSizes: row.has_sizes,
+      hasColors: row.has_colors
+    };
+  }
+
+  private mapProductToRow(product: Product): any {
+    return {
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      original_price: product.originalPrice,
+      rating: product.rating,
+      review_count: product.reviewCount,
+      description: product.description,
+      short_description: product.shortDescription,
+      images: product.images,
+      colors: product.colors,
+      sizes: product.sizes,
+      product_id: product.productId,
+      delivery_regions: product.deliveryRegions,
+      category: product.category,
+      is_main: product.isMain,
+      is_active: product.isActive,
+      stock: product.stock,
+      discount_percentage: product.discountPercentage,
+      purchase_cost: product.purchaseCost,
+      internal_price: product.internalPrice,
+      has_sizes: product.hasSizes,
+      has_colors: product.hasColors
+    };
+  }
+
   // --- CRUD Operations ---
 
   async clearSystemData(): Promise<void> {
@@ -197,6 +307,13 @@ class BackendAPI {
     else this.db.products.push(product);
     this.save();
     this.notifyListeners('products', this.db.products);
+
+    try {
+        await this.supabase.from('products').upsert(this.mapProductToRow(product));
+    } catch (e) {
+        console.error('Supabase Product Sync Failed:', e);
+    }
+
     return product;
   }
 
@@ -204,6 +321,43 @@ class BackendAPI {
     this.db.products = this.db.products.filter(p => p.id !== id);
     this.save();
     this.notifyListeners('products', this.db.products);
+
+    try {
+        await this.supabase.from('products').delete().eq('id', id);
+    } catch (e) {
+        console.error('Supabase Product Delete Failed:', e);
+    }
+  }
+
+  async getCategories(): Promise<Category[]> {
+    return [...this.db.categories];
+  }
+
+  async saveCategory(category: Category): Promise<Category> {
+    const idx = this.db.categories.findIndex(c => c.id === category.id);
+    if (idx > -1) this.db.categories[idx] = category;
+    else this.db.categories.push(category);
+    this.save();
+    this.notifyListeners('categories', this.db.categories);
+
+    try {
+      await this.supabase.from('categories').upsert({
+        id: category.id,
+        name: category.name,
+        is_active: category.isActive
+      });
+    } catch (e) { console.error(e); }
+    return category;
+  }
+
+  async deleteCategory(id: string): Promise<void> {
+    this.db.categories = this.db.categories.filter(c => c.id !== id);
+    this.save();
+    this.notifyListeners('categories', this.db.categories);
+
+    try {
+      await this.supabase.from('categories').delete().eq('id', id);
+    } catch (e) { console.error(e); }
   }
 
   async getOrders(forceRefresh = false): Promise<Order[]> {

@@ -16,28 +16,9 @@ const REVIEWS = [
   { id: 3, name: "Tanvir Ahmed", rating: 5, date: "4 days ago", comment: "Best organic shampoo I've used. No harsh chemicals, just pure nature." },
   { id: 4, name: "Nusrat Jahan", rating: 5, date: "5 days ago", comment: "Cacumen Biotae magic! My roots feel stronger than ever." },
   { id: 5, name: "Ayesha Siddiqua", rating: 4, date: "1 week ago", comment: "Good for daily use. Keeps the scalp clean and dandruff free." },
-  { id: 6, name: "Rashedul Karim", rating: 5, date: "1 week ago", comment: "Great for travel. No plastic waste and effective cleaning." },
-  { id: 7, name: "Farhana Akter", rating: 5, date: "1 week ago", comment: "চুল এখন অনেক বেশি ঘন মনে হয়। ধন্যবাদ! (Hair feels much thicker now. Thanks!)" },
-  { id: 8, name: "Mehedi Hasan", rating: 5, date: "2 weeks ago", comment: "Finally found something that stopped my hair fall. Usman Grass works wonders." },
-  { id: 9, name: "Sumaiya Khan", rating: 5, date: "2 weeks ago", comment: "Leaves hair shiny and vibrant without conditioner." },
-  { id: 10, name: "Rubel Hossain", rating: 5, date: "2 weeks ago", comment: "প্রথমবার ব্যবহার করলাম, অসাধারণ রেজাল্ট। (Used for the first time, amazing result.)" },
-  { id: 11, name: "Jannatul Ferdous", rating: 5, date: "2 weeks ago", comment: "Love the natural herbal extract smell. Very refreshing." },
-  { id: 12, name: "Arif Chowdhury", rating: 4, date: "3 weeks ago", comment: "Good product. A bit different from liquid shampoo but better for hair." },
-  { id: 13, name: "Sharmin Sultana", rating: 5, date: "3 weeks ago", comment: "রুক্ষ চুল এখন অনেক সফট। (Rough hair is now very soft.)" },
-  { id: 14, name: "Imran Khan", rating: 5, date: "3 weeks ago", comment: "Highly effective against dandruff. Saw results in 3 washes." },
-  { id: 15, name: "Tasnim Jara", rating: 5, date: "1 month ago", comment: "Completely natural and chemical free. Safe for the whole family." },
-  { id: 16, name: "Rakib Hassan", rating: 5, date: "1 month ago", comment: "Best value for money. One bar lasts a long time." },
-  { id: 17, name: "Sabrina Momtaz", rating: 5, date: "1 month ago", comment: "My hair texture has improved significantly." },
-  { id: 18, name: "Fahim Uddin", rating: 5, date: "1 month ago", comment: "প্রাকৃতিক উপাদানে তৈরি তাই কোনো পার্শ্বপ্রতিক্রিয়া নেই। (Made of natural ingredients so no side effects.)" },
-  { id: 19, name: "Mahiya Mahi", rating: 5, date: "1 month ago", comment: "Simply the best shampoo bar in Bangladesh." },
-  { id: 20, name: "Sajidul Islam", rating: 4, date: "1 month ago", comment: "Keeps hair oil-free for longer periods." },
-  { id: 21, name: "Nazmun Nahar", rating: 5, date: "2 months ago", comment: "Highly recommended for hair regrowth." },
-  { id: 22, name: "Kamrul Hasan", rating: 5, date: "2 months ago", comment: "চুলের গোড়া শক্ত করে। (Strengthens hair roots.)" },
-  { id: 23, name: "Laila Yeasmin", rating: 5, date: "2 months ago", comment: "Eco-friendly and hair-friendly. What more do you need?" },
-  { id: 24, name: "Zubayer Ahmed", rating: 5, date: "2 months ago", comment: "Excellent product quality. Fast delivery too." }
 ];
 
-const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, otherProducts, onProductClick, onOrderNow }) => {
+const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, onProductClick, onOrderNow }) => {
   const [showReviews, setShowReviews] = useState(false);
 
   return (
@@ -163,7 +144,8 @@ const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, otherProdu
           {/* Image Content */}
           <div className="lg:col-span-6 relative order-1 lg:order-2">
              <div 
-               className="relative aspect-[4/5] lg:aspect-square bg-white rounded-[32px] md:rounded-[40px] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] overflow-hidden group"
+               onClick={() => onProductClick(mainProduct)}
+               className="relative aspect-[4/5] lg:aspect-square bg-white rounded-[32px] md:rounded-[40px] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] overflow-hidden group cursor-pointer"
              >
                 <img 
                   src={mainProduct.images[0]} 
@@ -173,7 +155,7 @@ const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, otherProdu
                 
                 {/* Floating Badge (Clickable Review Trigger) */}
                 <div 
-                  onClick={() => setShowReviews(true)}
+                  onClick={(e) => { e.stopPropagation(); setShowReviews(true); }}
                   className="absolute bottom-4 right-4 md:bottom-8 md:right-8 bg-white/90 backdrop-blur-md px-4 py-3 md:px-6 md:py-4 rounded-2xl md:rounded-3xl shadow-lg border border-white/50 flex flex-col items-center animate-bounce cursor-pointer hover:bg-white hover:scale-110 transition-all group/badge"
                   style={{ animationDuration: '3s' }}
                 >

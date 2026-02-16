@@ -1,6 +1,9 @@
 
 import { Product } from './types';
 
+// NOTE: To use your local images, replace the URLs below with your file paths (e.g., '/images/nature-bar-1.jpg')
+// and ensure the files are placed in the 'public' folder of your project.
+
 export const INITIAL_PRODUCTS: Product[] = [
   {
     id: '1',
@@ -47,10 +50,10 @@ export const INITIAL_PRODUCTS: Product[] = [
 📦 সীমিত স্টক—এখনই অর্ডার করুন!`,
     shortDescription: "Natural Care for Stronger, Thicker & Vibrant Hair",
     images: [
-      "https://images.unsplash.com/photo-1608248597279-f99d160bfbc8?q=80&w=1000&auto=format&fit=crop", // Green Bar Main
-      "https://images.unsplash.com/photo-1623631484728-66229503eb89?q=80&w=1000&auto=format&fit=crop", // Green Soap with Nature
-      "https://images.unsplash.com/photo-1600857544200-b2f666a9a2ec?q=80&w=1000&auto=format&fit=crop", // In Hand / Lifestyle
-      "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?q=80&w=1000&auto=format&fit=crop"  // Texture / Detail
+      "https://images.unsplash.com/photo-1608248597279-f99d160bfbc8?q=80&w=1000&auto=format&fit=crop", // Main Image
+      "https://images.unsplash.com/photo-1623631484728-66229503eb89?q=80&w=1000&auto=format&fit=crop", // Detail 1
+      "https://images.unsplash.com/photo-1600857544200-b2f666a9a2ec?q=80&w=1000&auto=format&fit=crop", // Detail 2
+      "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?q=80&w=1000&auto=format&fit=crop"  // Texture
     ],
     colors: ['#2E8B57', '#3F4E4F'],
     sizes: ['Standard'],

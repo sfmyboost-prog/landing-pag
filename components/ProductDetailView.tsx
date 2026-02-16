@@ -31,6 +31,14 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({
     });
   };
 
+  const handleNextImage = () => {
+    setSelectedImage((prev) => (prev + 1) % product.images.length);
+  };
+
+  const handlePrevImage = () => {
+    setSelectedImage((prev) => (prev - 1 + product.images.length) % product.images.length);
+  };
+
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-8 py-8 md:py-12 animate-fadeIn">
       <button 
@@ -44,12 +52,21 @@ const ProductDetailView: React.FC<ProductDetailViewProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
         {/* Left Column: Images */}
         <div className="space-y-4">
-          <div className="aspect-[4/5] bg-gray-100 rounded-[24px] md:rounded-[32px] overflow-hidden shadow-lg border border-gray-100">
+          <div className="aspect-[4/5] bg-gray-100 rounded-[24px] md:rounded-[32px] overflow-hidden shadow-lg border border-gray-100 relative group">
             <img 
               src={product.images[selectedImage]} 
               alt={product.name}
               className="w-full h-full object-cover animate-scaleIn"
             />
+            {/* Navigation Arrows */}
+            <div className="absolute inset-0 flex items-center justify-between p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+               <button onClick={(e) => { e.stopPropagation(); handlePrevImage(); }} className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-md shadow-lg flex items-center justify-center hover:bg-white transition-all transform hover:scale-110">
+                 <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7"/></svg>
+               </button>
+               <button onClick={(e) => { e.stopPropagation(); handleNextImage(); }} className="w-10 h-10 rounded-full bg-white/80 backdrop-blur-md shadow-lg flex items-center justify-center hover:bg-white transition-all transform hover:scale-110">
+                 <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7"/></svg>
+               </button>
+            </div>
           </div>
           <div className="flex gap-3 md:gap-4 overflow-x-auto py-2 no-scrollbar px-1">
             {product.images.map((img, idx) => (

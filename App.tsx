@@ -12,58 +12,82 @@ import UserPanel from './components/UserPanel';
 import LoadingOverlay from './components/LoadingOverlay';
 
 const App: React.FC = () => {
-  const [view, setInternalView] = useState<ViewState>('LANDING');
+  // --- Routing & Session Logic ---
+
+  // Determine initial view based on URL Query Params
+  const getInitialView = (): ViewState => {
+    const params = new URLSearchParams(window.location.search);
+    const viewParam = params.get('view');
+    
+    if (viewParam === 'admin') return 'ADMIN';
+    if (viewParam === 'cart') return 'USER';
+    if (params.get('product_id')) return 'DETAIL';
+    return 'LANDING';
+  };
+
+  const [view, setInternalView] = useState<ViewState>(getInitialView);
   const [isLoading, setIsLoading] = useState(false);
   
+  // Persist Admin Session via LocalStorage
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
+    return localStorage.getItem('elite_admin_session') === 'true';
+  });
+
   // Helper to trigger smooth loading transitions
   const triggerLoading = useCallback(async (minDuration = 800) => {
     setIsLoading(true);
     await new Promise(resolve => setTimeout(resolve, minDuration));
-    // We don't set false here immediately; usually we wait for the action to complete
-    // but for simple nav, we can return a promise that resolves when "ready"
-    return () => setTimeout(() => setIsLoading(false), 200); // smooth fade out
+    return () => setTimeout(() => setIsLoading(false), 200);
   }, []);
 
-  // Navigation Helper with History Support and Loading Effect
-  const setView = useCallback(async (newView: ViewState) => {
-    if (newView === view) return;
+  // Navigation Helper with History Support and Routing
+  const setView = useCallback(async (newView: ViewState, productId?: string) => {
+    if (newView === view && !productId) return;
     
-    // Start Loading
     const stopLoading = await triggerLoading(800);
     
-    setInternalView(currentView => {
-      if (currentView !== newView) {
-        window.history.pushState({ view: newView }, '');
-        return newView;
-      }
-      return currentView;
-    });
+    // Construct new relative URL with Search Params to be safe in all environments (including blob/iframes)
+    const url = new URL(window.location.href);
+    
+    if (newView === 'ADMIN') {
+      url.searchParams.set('view', 'admin');
+      url.searchParams.delete('product_id');
+    } else if (newView === 'USER') {
+      url.searchParams.set('view', 'cart');
+      url.searchParams.delete('product_id');
+    } else if (newView === 'DETAIL' && productId) {
+      url.searchParams.delete('view');
+      url.searchParams.set('product_id', productId);
+    } else {
+      url.searchParams.delete('view');
+      url.searchParams.delete('product_id');
+    }
 
-    // Stop Loading
+    setInternalView(newView);
+    
+    try {
+      // Use pathname + search to preserve the current environment's base path
+      const newRelativePath = `${window.location.pathname}?${url.searchParams.toString()}`;
+      window.history.pushState({ view: newView, productId }, '', newRelativePath);
+    } catch (e) {
+      console.warn('Navigation state update failed (likely restricted environment):', e);
+    }
+
     stopLoading();
   }, [triggerLoading, view]);
 
-  // Handle Browser Back Button
+  // Handle Browser Back/Forward Buttons
   useEffect(() => {
-    // Ensure initial state exists
-    if (!window.history.state) {
-      window.history.replaceState({ view: 'LANDING' }, '');
-    }
-
     const handlePopState = (event: PopStateEvent) => {
-      if (event.state && event.state.view) {
-        setInternalView(event.state.view);
-      } else {
-        // Fallback if state is missing (e.g. external link return)
-        setInternalView('LANDING');
-      }
+      // Re-evaluate view based on URL when user navigates history
+      const nextView = getInitialView();
+      setInternalView(nextView);
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -101,17 +125,22 @@ const App: React.FC = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [wishlist, setWishlist] = useState<Product[]>([]);
 
+  // Hydrate Selected Product from URL if present
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const pId = params.get('product_id');
+    if (pId && products.length > 0) {
+      const found = products.find(p => p.id === pId);
+      if (found) setSelectedProduct(found);
+    }
+  }, [products]);
+
   // Initial Data Fetch & Realtime Subscriptions
   useEffect(() => {
     const fetchData = async () => {
       const [p, c, o, u, cs, ps, tfa] = await Promise.all([
         api.getProducts(),
-        Promise.resolve([
-          { id: '1', name: 'Apparel', isActive: true },
-          { id: '2', name: 'Footwear', isActive: true },
-          { id: '3', name: 'Accessories', isActive: true },
-          { id: '4', name: 'Bags', isActive: true }
-        ]),
+        api.getCategories(),
         api.getOrders(),
         api.getUsers(),
         api.getCourierSettings(),
@@ -126,14 +155,12 @@ const App: React.FC = () => {
       setPixelSettings(ps);
       setTwoFactorSettings(tfa);
 
-      // Initialize Pixel Tracking if active
       if (ps.status === 'Active' && ps.pixelId) {
         PixelService.initializeBrowserPixel(ps.pixelId);
       }
     };
     fetchData();
 
-    // Subscribe to API updates to ensure products added in Admin Panel appear instantly for everyone
     const unsubscribe = api.subscribe((dataType, data) => {
       if (dataType === 'products') {
         setProducts([...data]);
@@ -141,17 +168,17 @@ const App: React.FC = () => {
         setOrders([...data]);
       } else if (dataType === 'users') {
         setUsers([...data]);
+      } else if (dataType === 'categories') {
+        setCategories([...data]);
       }
     });
 
     return () => unsubscribe();
-  }, [view]);
+  }, []);
 
   const mainProduct = products.find(p => p.isMain) || products[0];
 
   const handleProductClick = useCallback(async (product: Product) => {
-    const stopLoading = await triggerLoading(1000);
-    
     const directItem: CartItem = {
       product,
       quantity: 1,
@@ -160,23 +187,17 @@ const App: React.FC = () => {
     };
     setCart([directItem]);
     
-    // Navigate manually to avoid double loading
-    setInternalView('USER');
-    window.history.pushState({ view: 'USER' }, '');
+    // Navigate using setView to ensure safe URL updates
+    setView('USER');
     
-    // Tracking AddToCart
     PixelService.trackEvent('AddToCart', {
       value: product.price,
       content_ids: [product.id],
       content_type: 'product'
     }, pixelSettings);
-
-    stopLoading();
-  }, [pixelSettings, triggerLoading]);
+  }, [pixelSettings, setView]);
 
   const handleOrderNow = async (item: CartItem | Product) => {
-    const stopLoading = await triggerLoading(1200);
-
     if ('id' in item) {
       const directItem: CartItem = {
         product: item,
@@ -189,18 +210,15 @@ const App: React.FC = () => {
       setCart([item]);
     }
     
-    setInternalView('USER');
-    window.history.pushState({ view: 'USER' }, '');
+    // Navigate using setView to ensure safe URL updates
+    setView('USER');
     
-    // Tracking InitiateCheckout
     const product = 'id' in item ? item : item.product;
     PixelService.trackEvent('InitiateCheckout', {
       value: product.price,
       content_ids: [product.id],
       content_type: 'product'
     }, pixelSettings);
-
-    stopLoading();
   };
 
   const updateCartItem = (index: number, updates: Partial<CartItem>) => {
@@ -220,7 +238,7 @@ const App: React.FC = () => {
   const placeOrder = async (details: { name: string; email: string; phone: string; address: string; location: string; zipCode: string; notes: string; courier: 'Pathao' | 'SteadFast' | '' }) => {
     if (cart.length === 0) return;
     
-    const stopLoading = await triggerLoading(2000); // Longer delay for "processing"
+    const stopLoading = await triggerLoading(2000);
 
     const totalPrice = cart.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
     
@@ -247,8 +265,6 @@ const App: React.FC = () => {
     
     await api.createOrder(newOrder);
     setOrders(prev => [newOrder, ...prev]);
-    
-    // Universal Pixel Purchase Tracking
     PixelService.trackPurchase(newOrder, pixelSettings);
     
     clearCart();
@@ -263,23 +279,16 @@ const App: React.FC = () => {
     }, 2000);
   };
 
-  // Admin and Data Actions don't necessarily need the big full-screen loader
-  // as they are typically quicker or have local feedback. 
-  // We keep the overlay for major view shifts.
-
   const updateProduct = async (updatedProduct: Product) => {
     await api.saveProduct(updatedProduct);
-    // setProducts is removed here because subscription handles it
   };
 
   const addProduct = async (newProduct: Product) => {
     await api.saveProduct(newProduct);
-    // setProducts is removed here because subscription handles it
   };
 
   const deleteProduct = async (id: string) => {
     await api.deleteProduct(id);
-    // setProducts is removed here because subscription handles it
   };
 
   const updateOrder = async (updatedOrder: Order) => {
@@ -292,12 +301,16 @@ const App: React.FC = () => {
     setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
   };
 
+  const handleAdminLoginSuccess = () => {
+    localStorage.setItem('elite_admin_session', 'true');
+    setIsAdminAuthenticated(true);
+  };
+
   const handleAdminLogout = async () => {
-    const stopLoading = await triggerLoading(500);
+    // Explicitly set view to LANDING using helper
+    localStorage.removeItem('elite_admin_session');
     setIsAdminAuthenticated(false);
-    setInternalView('LANDING'); // Skip standard setView to control flow manually
-    window.history.pushState({ view: 'LANDING' }, '');
-    stopLoading();
+    setView('LANDING');
   };
 
   const handleUpdateCourierSettings = async (settings: CourierSettings) => {
@@ -317,7 +330,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8F9FB] relative overflow-x-hidden">
-      {/* Global Loading Overlay */}
       <LoadingOverlay isVisible={isLoading} />
 
       {isCelebrating && (
@@ -327,6 +339,7 @@ const App: React.FC = () => {
         </div>
       )}
 
+      {/* Only show Navbar if not in Admin View */}
       {view !== 'ADMIN' && <Navbar currentView={view} setView={setView} cartCount={cart.length} />}
       
       <main className={`flex-grow ${view !== 'ADMIN' ? 'pt-16' : ''}`}>
@@ -351,7 +364,7 @@ const App: React.FC = () => {
 
         {view === 'ADMIN' && (
           !isAdminAuthenticated ? (
-            <AdminLogin onLoginSuccess={() => setIsAdminAuthenticated(true)} onBack={() => setView('LANDING')} />
+            <AdminLogin onLoginSuccess={handleAdminLoginSuccess} onBack={() => setView('LANDING')} />
           ) : (
             <AdminPanel 
               products={products} 
@@ -371,9 +384,9 @@ const App: React.FC = () => {
               onUpdateCourierSettings={handleUpdateCourierSettings}
               onUpdatePixelSettings={handleUpdatePixelSettings}
               onUpdateTwoFactorSettings={handleUpdateTwoFactorSettings}
-              onAddCategory={(cat) => setCategories([...categories, { id: Math.random().toString(36).substr(2, 9), name: cat.name || 'New Category', isActive: cat.isActive ?? true }])}
-              onDeleteCategory={(catId) => setCategories(categories.filter(c => c.id !== catId))}
-              onUpdateCategory={(updatedCat) => setCategories(categories.map(c => c.id === updatedCat.id ? updatedCat : c))}
+              onAddCategory={(cat) => api.saveCategory({ ...cat, id: Math.random().toString(36).substr(2, 9), isActive: cat.isActive ?? true } as Category)}
+              onDeleteCategory={(catId) => api.deleteCategory(catId)}
+              onUpdateCategory={(updatedCat) => api.saveCategory(updatedCat)}
               onLogout={handleAdminLogout}
             />
           )
@@ -385,7 +398,7 @@ const App: React.FC = () => {
             users={users}
             orders={orders}
             wishlist={wishlist}
-            onViewProduct={setSelectedProduct}
+            onViewProduct={(p) => { setSelectedProduct(p); setView('DETAIL', p.id); }}
             onPlaceOrder={placeOrder}
             onUpdateCartItem={updateCartItem}
             onRemoveFromCart={removeFromCart}
