@@ -358,6 +358,7 @@ const App: React.FC = () => {
             otherProducts={products.filter(p => p.id !== mainProduct.id)}
             onProductClick={handleProductClick}
             onOrderNow={handleOrderNow}
+            storeSettings={storeSettings}
           />
         )}
         

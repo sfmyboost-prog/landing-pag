@@ -1,3 +1,4 @@
+
 import { Product, Category, Order, User, StoreSettings, CourierSettings, PixelSettings, TwoFactorSettings } from './types';
 import { INITIAL_PRODUCTS } from './constants';
 
@@ -19,8 +20,8 @@ const DEFAULT_STORE_SETTINGS: StoreSettings = {
   currency: 'BDT',
   taxPercentage: 0,
   shippingFee: 60,
-  whatsappNumber: '+8801911251608',
-  whatsappOrderLink: ''
+  whatsappNumber: '+8801604783479',
+  whatsappOrderLink: 'https://wa.me/8801604783479'
 };
 
 const DEFAULT_COURIER_SETTINGS: CourierSettings = {
