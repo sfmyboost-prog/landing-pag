@@ -38,7 +38,6 @@ const REVIEWS = [
 ];
 
 const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, otherProducts, onProductClick, onOrderNow }) => {
-  const activeOtherProducts = otherProducts.filter(p => p.isActive !== false);
   const [showReviews, setShowReviews] = useState(false);
 
   return (
@@ -123,9 +122,9 @@ const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, otherProdu
               {mainProduct.name}
             </h1>
             
-            <p className="text-base md:text-lg text-gray-500 mb-6 md:mb-8 leading-relaxed max-w-lg font-medium">
-              {mainProduct.description}
-            </p>
+            <div className="text-base md:text-lg text-gray-500 mb-6 md:mb-8 leading-relaxed max-w-lg font-medium whitespace-pre-wrap">
+              {mainProduct.description.substring(0, 200)}...
+            </div>
 
             <div className="flex items-end gap-4 md:gap-6 mb-8 md:mb-10 border-b border-gray-200 pb-6 md:pb-8">
               <div>
@@ -206,75 +205,6 @@ const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, otherProdu
            ))}
         </div>
       </section>
-
-      {/* More Products Section */}
-      {activeOtherProducts.length > 0 && (
-        <section className="py-16 md:py-24 px-4 md:px-8 lg:px-8 max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-end mb-10 md:mb-16 gap-4">
-            <div>
-              <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-2 tracking-tight">More to Explore</h2>
-              <p className="text-gray-500 font-medium text-sm md:text-base">Discover other premium items from our collection.</p>
-            </div>
-            <div className="h-1 flex-grow bg-gray-100 rounded-full mx-8 hidden md:block"></div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 lg:gap-10">
-            {activeOtherProducts.map(product => (
-              <div 
-                key={product.id}
-                className="group bg-white rounded-3xl p-3 md:p-4 border border-gray-100 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer flex flex-col"
-                onClick={() => onProductClick(product)}
-              >
-                <div className="aspect-[3/4] rounded-2xl overflow-hidden bg-gray-50 relative mb-4 md:mb-6">
-                  <img 
-                    src={product.images[0]} 
-                    alt={product.name}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                  {product.discountPercentage && (
-                    <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest text-red-600 shadow-sm">
-                      -{product.discountPercentage}%
-                    </div>
-                  )}
-                  <div className="absolute inset-x-4 bottom-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); onOrderNow(product); }}
-                      className="w-full bg-[#111827] text-white py-2.5 md:py-3 rounded-xl font-bold text-xs md:text-sm shadow-lg hover:bg-black flex items-center justify-center gap-2"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
-                      Order Now
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="px-2 pb-2 flex-grow flex flex-col">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{product.category}</p>
-                  <h3 className="text-base md:text-lg font-black text-gray-900 mb-2 leading-tight group-hover:text-indigo-600 transition-colors">{product.name}</h3>
-                  
-                  {/* Rating Stars */}
-                  <div className="flex items-center gap-1 mb-3">
-                    <div className="flex text-yellow-400">
-                      {[...Array(5)].map((_, i) => (
-                        <svg key={i} className={`w-3 h-3 ${i < Math.floor(product.rating) ? 'fill-current' : 'text-gray-200 fill-current'}`} viewBox="0 0 20 20">
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                        </svg>
-                      ))}
-                    </div>
-                    <span className="text-[10px] font-bold text-gray-400">({product.reviewCount})</span>
-                  </div>
-
-                  <div className="mt-auto flex items-center justify-between">
-                    <span className="text-lg md:text-xl font-black text-[#111827]">TK{product.price.toLocaleString()}</span>
-                    {product.originalPrice > product.price && (
-                      <span className="text-sm font-bold text-gray-300 line-through">TK{product.originalPrice.toLocaleString()}</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
       
       <style>{`
         @keyframes scaleIn {

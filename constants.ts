@@ -5,94 +5,64 @@ export const INITIAL_PRODUCTS: Product[] = [
   {
     id: '1',
     name: "Nature Shampoo Bar",
-    price: 450.00,
-    originalPrice: 650.00,
+    price: 650.00,
+    originalPrice: 850.00,
     rating: 4.9,
     reviewCount: 24,
-    description: "প্রাকৃতিক যত্নে চুল হোক আরও শক্ত, ঘন ও প্রাণবন্ত। চুল পড়া, খুশকি ও রুক্ষতা দূর করতে ব্যবহার করুন আমাদের ভেষজ শ্যাম্পু বার। এতে আছে Cacumen Biotae ও Usman Grass এর মতো দুর্লভ প্রাকৃতিক উপাদান যা চুলের গোড়া মজবুত করে এবং নতুন চুল গজাতে সাহায্য করে।",
-    shortDescription: "Organic Hair Care Solution",
+    description: `🌿 Nature Shampoo Bar 🌿
+✨ প্রাকৃতিক যত্নে চুল হোক আরও শক্ত, ঘন ও প্রাণবন্ত ✨
+
+চুল পড়া, খুশকি, রুক্ষতা আর নিস্তেজ চুলে বিরক্ত? এবার প্রাকৃতিক সমাধান নিয়ে হাজির Amar Bazari Shampoo Bar—যা আপনার চুল ও স্কাল্পকে দেবে গভীর যত্ন 🌱
+
+🌱 এই শ্যাম্পু বারের প্রধান উপাদান
+✔ Cacumen Biotae
+✔ Usman Grass
+✔ প্রাকৃতিক ভেষজ এক্সট্র্যাক্ট
+
+👉 কেমিক্যাল শ্যাম্পুর ক্ষতি থেকে মুক্তি পেতে ভেষজ শ্যাম্পু বারের দারুণ বিকল্প।
+
+💚 গুণাগুণ ও উপকারিতা
+✔ চুল পড়া কমাতে সাহায্য করে
+✔ খুশকি ও স্কাল্পের ময়লা পরিষ্কার করে
+✔ চুলের গোড়া মজবুত করে
+✔ চুল নরম, মসৃণ ও উজ্জ্বল করে
+✔ রুক্ষ ও ড্যামেজড চুলে পুষ্টি জোগায়
+✔ প্রাকৃতিক উপাদানে তৈরি, নিয়মিত ব্যবহারে নিরাপদ
+✔ পুরুষ ও নারী—সবার জন্য উপযোগী
+
+🧴 কিভাবে ব্যবহার করবেন
+1️⃣ চুল ভালোভাবে ভিজিয়ে নিন
+2️⃣ শ্যাম্পু বারটি হাতে বা সরাসরি চুলে ঘষে ফেনা তৈরি করুন
+3️⃣ ১–২ মিনিট হালকা করে স্কাল্প ম্যাসাজ করুন
+4️⃣ পরিষ্কার পানি দিয়ে ধুয়ে ফেলুন
+5️⃣ সপ্তাহে ২–৩ বার ব্যবহার করলে ভালো ফল পাবেন
+
+🌿 কেন এই Shampoo Bar ব্যবহার করবেন?
+✔ লিকুইড শ্যাম্পুর চেয়ে দীর্ঘদিন ব্যবহারযোগ্য
+✔ কম কেমিক্যাল, বেশি প্রাকৃতিক যত্ন
+✔ ভ্রমণে বহন করা সহজ
+✔ পরিবেশবান্ধব
+
+✨ আজই ব্যবহার শুরু করুন, নিজের চুলেই দেখুন পার্থক্য!
+📦 সীমিত স্টক—এখনই অর্ডার করুন!`,
+    shortDescription: "Natural Care for Stronger, Thicker & Vibrant Hair",
     images: [
-      "https://images.unsplash.com/photo-1608248597279-f99d160bfbc8?q=80&w=1000&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1600857544200-b2f666a9a2ec?q=80&w=1000&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1623631484728-66229503eb89?q=80&w=1000&auto=format&fit=crop"
+      "https://images.unsplash.com/photo-1608248597279-f99d160bfbc8?q=80&w=1000&auto=format&fit=crop", // Green Bar Main
+      "https://images.unsplash.com/photo-1623631484728-66229503eb89?q=80&w=1000&auto=format&fit=crop", // Green Soap with Nature
+      "https://images.unsplash.com/photo-1600857544200-b2f666a9a2ec?q=80&w=1000&auto=format&fit=crop", // In Hand / Lifestyle
+      "https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?q=80&w=1000&auto=format&fit=crop"  // Texture / Detail
     ],
-    colors: ['#3F4E4F', '#A27B5C'],
-    sizes: ['100g'],
-    productId: '#NSB001',
+    colors: ['#2E8B57', '#3F4E4F'],
+    sizes: ['Standard'],
+    productId: '#NSB-NATURE',
     deliveryRegions: ['Nationwide'],
-    category: 'Hair Care',
+    category: 'Natural Soap',
     isMain: true,
     isActive: true,
     stock: 200,
-    discountPercentage: 30,
-    purchaseCost: 150.00,
-    internalPrice: 300.00,
-    hasSizes: false,
-    hasColors: false
-  },
-  {
-    id: '2',
-    name: "Classic Leather Sneakers",
-    price: 3200.00,
-    originalPrice: 4500.00,
-    rating: 4.5,
-    reviewCount: 112,
-    description: "Handcrafted Italian leather sneakers with minimalist aesthetic and ergonomic sole for all-day comfort.",
-    images: ["https://picsum.photos/id/21/800/1000"],
-    colors: ['#000000', '#ffffff'],
-    sizes: ['8', '9', '10', '11'],
-    productId: '#SNK2210',
-    deliveryRegions: ['Worldwide'],
-    category: 'Footwear',
-    isActive: true,
-    stock: 45,
-    discountPercentage: 25,
-    purchaseCost: 1800.00,
-    internalPrice: 2500.00,
-    hasSizes: true,
-    hasColors: true
-  },
-  {
-    id: '3',
-    name: "Minimalist Chronograph Watch",
-    price: 5500.00,
-    originalPrice: 7500.00,
-    rating: 4.9,
-    reviewCount: 45,
-    description: "Sleek stainless steel watch featuring a sapphire crystal face and premium leather strap.",
-    images: ["https://picsum.photos/id/31/800/1000"],
-    colors: ['#111827', '#4b5563'],
-    sizes: ['OS'],
-    productId: '#WTC993',
-    deliveryRegions: ['Worldwide'],
-    category: 'Accessories',
-    isActive: true,
-    stock: 12,
-    discountPercentage: 20,
-    purchaseCost: 3500.00,
-    internalPrice: 4500.00,
-    hasSizes: false,
-    hasColors: true
-  },
-  {
-    id: '4',
-    name: "Urban Explorer Backpack",
-    price: 2400.00,
-    originalPrice: 3200.00,
-    rating: 4.7,
-    reviewCount: 88,
-    description: "Weather-resistant nylon backpack with padded laptop compartment and multiple utility pockets.",
-    images: ["https://picsum.photos/id/48/800/1000"],
-    colors: ['#1e293b', '#064e3b'],
-    sizes: ['OS'],
-    productId: '#BPK445',
-    deliveryRegions: ['Dhaka', 'Rajshahi'],
-    category: 'Bags',
-    isActive: true,
-    stock: 32,
-    discountPercentage: 21,
-    purchaseCost: 1200.00,
-    internalPrice: 1800.00,
+    discountPercentage: 23,
+    purchaseCost: 250.00,
+    internalPrice: 650.00,
     hasSizes: false,
     hasColors: false
   }

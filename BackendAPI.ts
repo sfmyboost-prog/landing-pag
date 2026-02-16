@@ -4,7 +4,7 @@ import { INITIAL_PRODUCTS } from './constants';
 import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 
 // Updated Key to ensure new Shampoo product is loaded
-const DB_KEY = 'elite_commerce_db_clean_v3';
+const DB_KEY = 'elite_commerce_db_clean_v4';
 
 // Supabase Configuration from User
 const SUPABASE_URL = 'https://yubfgiermqfsysbyqemx.supabase.co';
