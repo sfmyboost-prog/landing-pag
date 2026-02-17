@@ -156,14 +156,8 @@ const ProductLanding: React.FC<ProductLandingProps> = ({ mainProduct, otherProdu
                 onClick={() => onOrderNow(mainProduct)}
                 className="bg-[#111827] text-white px-8 py-4 md:px-10 md:py-5 rounded-2xl font-black text-base md:text-lg hover:bg-black transition-all transform hover:-translate-y-1 shadow-xl hover:shadow-2xl flex items-center gap-2 md:gap-3"
               >
-                <span>Order it here</span>
+                <span>Order Now</span>
                 <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
-              </button>
-              <button 
-                onClick={() => onProductClick(mainProduct)}
-                className="bg-white text-[#111827] px-8 py-4 md:px-10 md:py-5 rounded-2xl font-black text-base md:text-lg border border-gray-200 hover:bg-gray-50 transition-all"
-              >
-                View details
               </button>
               
               {storeSettings.whatsappOrderLink && (
